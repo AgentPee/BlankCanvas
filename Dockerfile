@@ -1,5 +1,5 @@
-# Use the official .NET 9.0 SDK image for building
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+# Use the official .NET 10.0 SDK image for building
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy NuGet.config if it exists (for package source configuration)
@@ -28,7 +28,7 @@ WORKDIR /src/QuickClinique
 RUN dotnet publish "QuickClinique.csproj" -c Release -o /app/publish
 
 # Build runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 # Copy published app
