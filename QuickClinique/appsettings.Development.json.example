@@ -1,0 +1,9 @@
+{
+    "EmailSettings": {
+      "FromEmail": "noreply@quickclinique.site",
+      "FromName": "QuickClinique",
+      "SmtpPassword": "api_key"
+    }
+  }
+  
+  

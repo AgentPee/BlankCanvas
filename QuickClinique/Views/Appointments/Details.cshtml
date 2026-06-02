@@ -1,0 +1,165 @@
+@model QuickClinique.Models.Appointment
+@{
+    ViewData["Title"] = "Appointment Details";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/details.css" />
+}
+
+<div class="details-container">
+    <div class="details-header">
+        <h2>
+            <i class="fas fa-calendar-check"></i>
+            Appointment Details
+        </h2>
+        <div class="appointment-id">Appointment ID: #@Model.AppointmentId</div>
+    </div>
+
+    <div class="details-body">
+        <!-- Status Banner -->
+        <div class="status-banner status-@Model.AppointmentStatus.ToLower().Replace(" ", "-")">
+            <i class="fas fa-info-circle"></i>
+            <div>
+                <strong>Status:</strong> @Model.AppointmentStatus
+                <div class="status-subtext">
+                    Queue Status: @Model.QueueStatus | Queue Number: #@Model.QueueNumber
+                    @if (Model.AppointmentStatus == "Cancelled" && !string.IsNullOrEmpty(Model.CancellationReason))
+                    {
+                        <br />
+                        <strong>Reason:</strong> @Model.CancellationReason
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Information Grid -->
+        <div class="info-grid">
+            <!-- Patient Information -->
+            <div class="info-section">
+                <h3><i class="fas fa-user"></i> Patient Information</h3>
+                <div class="info-item">
+                    <span class="info-label">Name:</span>
+                    <span class="info-value">@Model.Patient?.FullName</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">ID Number:</span>
+                    <span class="info-value">@Model.Patient?.Idnumber</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">@Model.Patient?.Email</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Phone:</span>
+                    <span class="info-value">@Model.Patient?.PhoneNumber</span>
+                </div>
+            </div>
+
+            <!-- Appointment Information -->
+            <div class="info-section">
+                <h3><i class="fas fa-calendar-alt"></i> Appointment Information</h3>
+                <div class="info-item">
+                    <span class="info-label">Date:</span>
+                    <span class="info-value">
+                        @if (Model.Schedule != null)
+                        {
+                            @Model.Schedule.Date.ToString("dddd, MMMM dd, yyyy")
+                        }
+                        else
+                        {
+                            <span>Not scheduled</span>
+                        }
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Time:</span>
+                    <span class="info-value">
+                        @if (Model.Schedule != null)
+                        {
+                            <text>@Model.Schedule.StartTime.ToString(@"h:mm tt") - @Model.Schedule.EndTime.ToString(@"h:mm tt")</text>
+                        }
+                        else
+                        {
+                            <span>Not scheduled</span>
+                        }
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Date Booked:</span>
+                    <span class="info-value">@Model.DateBooked.ToString("MMMM dd, yyyy")</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Queue Position:</span>
+                    <span class="info-value">
+                        <span class="queue-info">
+                            <i class="fas fa-list-ol"></i>
+                            #@Model.QueueNumber
+                        </span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Medical Information -->
+        <div class="info-section">
+            <h3><i class="fas fa-stethoscope"></i> Medical Information</h3>
+            <div class="info-item">
+                <span class="info-label">Reason for Visit:</span>
+                <span class="info-value">@Model.ReasonForVisit</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Symptoms:</span>
+                <span class="info-value">
+                    <div class="symptoms-box">
+                        @if (!string.IsNullOrEmpty(Model.Symptoms) && Model.Symptoms != "No symptoms provided")
+                        {
+                            @Model.Symptoms
+                        }
+                        else
+                        {
+                            <em class="text-muted-symptoms">No symptoms provided</em>
+                        }
+                    </div>
+                </span>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <a href="@Url.Action("Manage")" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to List
+            </a>
+
+            @if (Context.Session.GetInt32("ClinicStaffId") != null)
+            {
+                @if (Model.AppointmentStatus == "Pending")
+                {
+                    <button type="button" class="btn btn-success" onclick="confirmAppointment(@Model.AppointmentId)">
+                        <i class="fas fa-check"></i> Confirm Appointment
+                    </button>
+                }
+
+                @if (Model.AppointmentStatus != "Cancelled" && Model.AppointmentStatus != "Completed")
+                {
+                    <button type="button" class="btn btn-danger" onclick="cancelAppointment(@Model.AppointmentId)">
+                        <i class="fas fa-times"></i> Cancel Appointment
+                    </button>
+                }
+
+
+                @if (Model.AppointmentStatus == "In Progress")
+                {
+                    <button type="button" class="btn btn-primary" onclick="completeAppointment(@Model.AppointmentId)">
+                        <i class="fas fa-check-circle"></i> Complete Appointment
+                    </button>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/details.js"></script>
+    @Html.AntiForgeryToken()
+}

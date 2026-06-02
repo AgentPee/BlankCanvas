@@ -1,0 +1,1044 @@
+@model QuickClinique.Models.Student
+@{
+    ViewData["Title"] = "Patient Details";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/precord.css" asp-append-version="true" />
+}
+
+<div class="patient-details-container">
+    @Html.AntiForgeryToken()
+    <a href="@Url.Action("Index")" class="btn-back">
+        <i class="fas fa-arrow-left"></i> Back to Patient List
+    </a>
+
+    <div class="patient-info-card">
+        <div class="patient-info-header">
+            <div class="patient-avatar">
+                @(Model.FirstName.Substring(0, 1).ToUpper())@(Model.LastName.Substring(0, 1).ToUpper())
+            </div>
+            <div class="patient-header-info">
+                <h2>@Model.FirstName @Model.LastName</h2>
+                <p><i class="fas fa-id-card"></i> ID: @Model.Idnumber</p>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-icon">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Email Address</div>
+                    <div class="info-value">@Model.Email</div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <i class="fas fa-phone"></i>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Phone Number</div>
+                    <div class="info-value">@Model.PhoneNumber</div>
+                </div>
+            </div>
+
+            @if (Model.Birthdate.HasValue)
+            {
+                var birthdate = Model.Birthdate.Value;
+                var today = GetPhilippineDate();
+                var age = today.Year - birthdate.Year;
+                
+                // Subtract one year if birthday hasn't occurred yet this year
+                var birthdayThisYear = new DateOnly(today.Year, birthdate.Month, birthdate.Day);
+                if (birthdayThisYear > today)
+                {
+                    age--;
+                }
+                
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-birthday-cake"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Birthdate</div>
+                        <div class="info-value">
+                            @birthdate.ToString("MMMM dd, yyyy")
+                            @if (age >= 0)
+                            {
+                                <span style="color: #718096; font-size: 0.875rem; font-weight: 500; margin-left: 0.5rem;">
+                                    (Age: @age)
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Model.Gender))
+            {
+                <div class="info-item">
+                    <div class="info-icon">
+                        <i class="fas fa-venus-mars"></i>
+                    </div>
+                    <div class="info-content">
+                        <div class="info-label">Gender</div>
+                        <div class="info-value">@Model.Gender</div>
+                    </div>
+                </div>
+            }
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Email Verification</div>
+                    <div class="info-value">
+                        @if (Model.IsEmailVerified)
+                        {
+                            <span class="text-success-custom"><i class="fas fa-check-circle"></i> Verified</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger-custom"><i class="fas fa-times-circle"></i> Not Verified</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <i class="fas fa-toggle-on"></i>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Account Status</div>
+                    <div class="info-value">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge badge-success">
+                                <i class="fas fa-check-circle"></i> Active
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-danger">
+                                <i class="fas fa-ban"></i> Inactive
+                            </span>
+                        }
+                        <button onclick="showToggleModal(@Model.StudentId, '@Model.FirstName @Model.LastName', @Model.IsActive.ToString().ToLower())" 
+                                class="btn-action @(Model.IsActive ? "btn-delete" : "status-button-activate ml-10")">
+                            <i class="fas fa-@(Model.IsActive ? "ban" : "check")"></i> @(Model.IsActive ? "Deactivate" : "Activate")
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Total Appointments</div>
+                    <div class="info-value">@Model.Appointments.Count</div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Allergies:</div>
+                    <div class="info-value">
+                        @{
+                            var mostRecentRecord = Model.Precords?.OrderByDescending(r => r.RecordId).FirstOrDefault();
+                            var allergies = mostRecentRecord?.Allergies ?? "No allergies recorded";
+                        }
+                        @allergies
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emergency Contact Information Section -->
+    @if (!string.IsNullOrWhiteSpace(Model.EmergencyContactName))
+    {
+        <div class="emergency-contact-section"> 
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-phone-alt"></i>
+                    Emergency Contact Information
+                </h3>
+            </div>
+
+            <div class="emergency-contact-grid">
+                <div class="emergency-contact-item">
+                    <div class="emergency-contact-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="emergency-contact-content">
+                        <div class="emergency-contact-label">Contact Name</div>
+                        <div class="emergency-contact-value">@Model.EmergencyContactName</div>
+                    </div>
+                </div>
+
+                <div class="emergency-contact-item">
+                    <div class="emergency-contact-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="emergency-contact-content">
+                        <div class="emergency-contact-label">Relationship</div>
+                        <div class="emergency-contact-value">@Model.EmergencyContactRelationship</div>
+                    </div>
+                </div>
+
+                <div class="emergency-contact-item">
+                    <div class="emergency-contact-icon">
+                        <i class="fas fa-phone"></i>
+                    </div>
+                    <div class="emergency-contact-content">
+                        <div class="emergency-contact-label">Phone Number</div>
+                        <div class="emergency-contact-value">
+                            @if (!string.IsNullOrWhiteSpace(Model.EmergencyContactPhoneNumber))
+                            {
+                                <a href="tel:@Model.EmergencyContactPhoneNumber" class="phone-link">
+                                    @Model.EmergencyContactPhoneNumber
+                                </a>
+                            }
+                            else
+                            {
+                                <span>N/A</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @{
+        // Parse ID images (comma-separated: front, back)
+        string? idFrontImage = null;
+        string? idBackImage = null;
+        if (!string.IsNullOrEmpty(Model.Image))
+        {
+            var imagePaths = Model.Image.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (imagePaths.Length > 0)
+            {
+                idFrontImage = imagePaths[0];
+            }
+            if (imagePaths.Length > 1)
+            {
+                idBackImage = imagePaths[1];
+            }
+        }
+    }
+
+    <!-- ID and Insurance Documents Section -->
+    <div class="documents-section">
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-id-card"></i>
+                Identification & Insurance Documents
+            </h3>
+        </div>
+
+        <div class="documents-grid">
+            <!-- ID Front -->
+            <div class="document-card">
+                <div class="document-header">
+                    <h4 class="document-title">
+                        <i class="fas fa-id-card"></i> ID Front
+                    </h4>
+                </div>
+                <div class="document-content">
+                    @if (!string.IsNullOrEmpty(idFrontImage))
+                    {
+                        <div class="insurance-receipt-container">
+                            <div class="current-file">
+                                <p><strong>Current ID Front:</strong></p>
+                                <img src="@Url.Content(idFrontImage)" alt="ID Front" class="preview-image" />
+                                <a href="@Url.Content(idFrontImage)" target="_blank" class="btn btn-sm btn-secondary mt-2">
+                                    <i class="fas fa-external-link-alt"></i> View Full Size
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="document-placeholder">
+                            <i class="fas fa-image"></i>
+                            <p>No ID Front image available</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- ID Back -->
+            <div class="document-card">
+                <div class="document-header">
+                    <h4 class="document-title">
+                        <i class="fas fa-id-card"></i> ID Back
+                    </h4>
+                </div>
+                <div class="document-content">
+                    @if (!string.IsNullOrEmpty(idBackImage))
+                    {
+                        <div class="insurance-receipt-container">
+                            <div class="current-file">
+                                <p><strong>Current ID Back:</strong></p>
+                                <img src="@Url.Content(idBackImage)" alt="ID Back" class="preview-image" />
+                                <a href="@Url.Content(idBackImage)" target="_blank" class="btn btn-sm btn-secondary mt-2">
+                                    <i class="fas fa-external-link-alt"></i> View Full Size
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="document-placeholder">
+                            <i class="fas fa-image"></i>
+                            <p>No ID Back image available</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Insurance Receipt -->
+            <div class="document-card">
+                <div class="document-header">
+                    <h4 class="document-title">
+                        <i class="fas fa-file-medical"></i> Insurance Receipt
+                    </h4>
+                </div>
+                <div class="document-content">
+                    @if (!string.IsNullOrEmpty(Model.InsuranceReceipt))
+                    {
+                        <div class="insurance-receipt-container">
+                            <div class="current-file">
+                                <p><strong>Current Receipt:</strong></p>
+                                <img src="@Url.Content(Model.InsuranceReceipt)" alt="Insurance Receipt" class="preview-image" />
+                                <a href="@Url.Content(Model.InsuranceReceipt)" target="_blank" class="btn btn-sm btn-secondary mt-2">
+                                    <i class="fas fa-external-link-alt"></i> View Full Size
+                                </a>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="document-placeholder">
+                            <i class="fas fa-file-medical"></i>
+                            <p>No insurance receipt available</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="appointments-section">
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-history"></i>
+                Appointment History
+            </h3>
+        </div>
+
+        @if (Model.Appointments != null && Model.Appointments.Any())
+        {
+            <div class="appointments-list">
+                @foreach (var appointment in Model.Appointments)
+                {
+                    <div class="appointment-item">
+                        <div class="appointment-header-row appointment-collapsible-header" data-toggle="appointment">
+                            <div class="appointment-date-time">
+                                <div class="date-badge">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>@appointment.Schedule.Date.ToString("MMMM dd, yyyy")</span>
+                                </div>
+                                <div class="time-badge">
+                                    <i class="fas fa-clock"></i>
+                                    <span>@appointment.Schedule.StartTime.ToString("hh:mm tt") - @appointment.Schedule.EndTime.ToString("hh:mm tt")</span>
+                                </div>
+                            </div>
+                            <div class="appointment-header-right">
+                                @{
+                                    var statusClass = "status-" + appointment.AppointmentStatus.ToLower().Replace(" ", "-");
+                                }
+                                <span class="status-badge @statusClass">@appointment.AppointmentStatus</span>
+                                <i class="fas fa-chevron-down appointment-chevron"></i>
+                            </div>
+                        </div>
+
+                        <div class="appointment-details-row appointment-details-collapsed">
+                            <div class="detail-row">
+                                <i class="fas fa-notes-medical"></i>
+                                <strong>Reason for Visit:</strong>
+                                <span>@appointment.ReasonForVisit</span>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(appointment.Symptoms))
+                            {
+                                <div class="detail-row">
+                                    <i class="fas fa-heartbeat"></i>
+                                    <strong>Symptoms:</strong>
+                                    <span>@appointment.Symptoms</span>
+                                </div>
+                            }
+
+                            <div class="detail-row">
+                                <i class="fas fa-hashtag"></i>
+                                <strong>Queue Number:</strong>
+                                <span>@appointment.QueueNumber</span>
+                            </div>
+
+                            <div class="detail-row">
+                                <i class="fas fa-calendar-day"></i>
+                                <strong>Date Booked:</strong>
+                                <span>@appointment.DateBooked.ToString("MMMM dd, yyyy")</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="no-appointments">
+                <i class="fas fa-calendar-times"></i>
+                <p>This patient has no appointment history yet.</p>
+            </div>
+        }
+    </div>
+
+    @if (Model.Precords != null && Model.Precords.Any())
+    {
+        <div class="medical-records-section medical-records-section-mt">
+            <div class="section-header">
+                <h3 class="section-title">
+                    <i class="fas fa-file-medical"></i>
+                    Medical Records
+                </h3>
+            </div>
+
+            <div class="medical-records-list">
+                @foreach (var record in Model.Precords.OrderByDescending(r => r.RecordId))
+                {
+                    <div class="medical-record-item medical-record-item-style">
+                        <div class="medical-record-header medical-record-collapsible-header" data-toggle="medical-record">
+                            <h4 class="medical-record-title">
+                                <i class="fas fa-file-medical-alt"></i> Record #@record.RecordId
+                            </h4>
+                            <i class="fas fa-chevron-down medical-record-chevron"></i>
+                        </div>
+                        
+                        <div class="medical-record-grid medical-record-details-collapsed">
+                            <div>
+                                <strong><i class="fas fa-stethoscope"></i> Diagnosis:</strong>
+                                <p class="medical-record-text">@record.Diagnosis</p>
+                            </div>
+                            <div>
+                                <strong><i class="fas fa-pills"></i> Medications:</strong>
+                                <p class="medical-record-text">@record.Medications</p>
+                            </div>
+                          
+                            
+                            <div>
+                                <strong><i class="fas fa-weight"></i> BMI:</strong>
+                                <p class="medical-record-text">@record.Bmi</p>
+                            </div>
+                            <div>
+                                <strong><i class="fas fa-heart"></i> Pulse Rate:</strong>
+                                <p class="medical-record-text">@(record.PulseRate.HasValue ? record.PulseRate.Value + " bpm" : "N/A")</p>
+                            </div>
+                            <div>
+                                <strong><i class="fas fa-tachometer-alt"></i> Blood Pressure:</strong>
+                                <p class="medical-record-text">@(!string.IsNullOrEmpty(record.BloodPressure) ? record.BloodPressure : "N/A")</p>
+                            </div>
+                            <div>
+                                <strong><i class="fas fa-thermometer-half"></i> Temperature:</strong>
+                                <p class="medical-record-text">@(record.Temperature.HasValue ? record.Temperature.Value.ToString("F1") + "°C" : "N/A")</p>
+                            </div>
+
+                            <div>
+                                <strong><i class="fas fa-wind"></i> Oxygen Saturation:</strong>
+                                <p class="medical-record-text">@(record.OxygenSaturation.HasValue ? record.OxygenSaturation.Value + "%" : "N/A")</p>
+                            </div>
+                            @if (record.TriageDateTime.HasValue)
+                            {
+                                <div>
+                                    <strong><i class="fas fa-calendar-alt"></i> Triage Date & Time:</strong>
+                                    <p class="medical-record-text">@record.TriageDateTime.Value.ToString("MMM dd, yyyy HH:mm")</p>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(record.TriageTakenByName))
+                            {
+                                <div>
+                                    <strong><i class="fas fa-user-nurse"></i> Triage Taken By:</strong>
+                                    <p class="medical-record-text">@record.TriageTakenByName</p>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(record.TreatmentProvidedByName))
+                            {
+                                <div>
+                                    <strong><i class="fas fa-user-md"></i> Treatment Provided By:</strong>
+                                    <p class="medical-record-text">@record.TreatmentProvidedByName</p>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(record.DoctorLicenseNumber))
+                            {
+                                <div>
+                                    <strong><i class="fas fa-id-card"></i> Doctor License Number:</strong>
+                                    <p class="medical-record-text">@record.DoctorLicenseNumber</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Medical Record Files Section -->
+    <div class="medical-records-section medical-records-section-mt">
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="fas fa-file-upload"></i>
+                Medical Record Files
+            </h3>
+        </div>
+        
+        <!-- Simple File Upload Form -->
+        <div class="upload-section" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+            <form id="uploadFileForm" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 1rem;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="patientId" id="uploadPatientId" value="@Model.StudentId" />
+                <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="fileInput" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+                            <i class="fas fa-file"></i> Select File:
+                        </label>
+                        <input type="file" id="fileInput" name="file" class="form-control" 
+                               accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.doc,.docx,.xls,.xlsx" 
+                               style="cursor: pointer;" />
+                        <small class="form-text text-muted" style="display: block; margin-top: 0.25rem;">
+                            Allowed: images, PDF, Office documents. Max size: 10MB
+                        </small>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label for="fileDescription" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">
+                            <i class="fas fa-comment"></i> Description (optional):
+                        </label>
+                        <input type="text" id="fileDescription" name="description" class="form-control" 
+                               placeholder="Enter file description..." />
+                    </div>
+                    <div>
+                        <button type="button" onclick="handleFileUpload(@Model.StudentId)" 
+                                id="uploadFileButton" class="btn btn-primary" style="min-width: 120px;">
+                            <i class="fas fa-upload"></i> Upload
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div id="medicalRecordFilesList">
+            @if (ViewBag.MedicalRecordFiles != null)
+            {
+                var files = ViewBag.MedicalRecordFiles as List<QuickClinique.Models.MedicalRecordFile>;
+                @if (files != null && files.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>File Name</th>
+                                    <th>Description</th>
+                                    <th>Uploaded By</th>
+                                    <th>Upload Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var file in files)
+                                {
+                                    <tr>
+                                        <td>@file.FileName</td>
+                                        <td>@(file.Description ?? "N/A")</td>
+                                        <td>@(file.UploadedByName ?? "N/A")</td>
+                                        <td>@file.UploadedAt.ToString("MMM dd, yyyy HH:mm")</td>
+                                        <td>
+                                            <a href="@file.FilePath" target="_blank" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <button onclick="deleteMedicalRecordFile(@file.FileId)" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No medical record files uploaded yet.</p>
+                }
+            }
+            else
+            {
+                <p class="text-muted">No medical record files uploaded yet.</p>
+            }
+        </div>
+    </div>
+
+    <div class="action-buttons-container">
+        <button onclick="showEditModal(@Model.StudentId)" class="btn-action btn-edit action-button-style">
+            <i class="fas fa-edit"></i> Edit Patient Info
+        </button>
+    
+        <a href="@Url.Action("Index")" class="btn-back btn-back-custom">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<!-- Image View Modal -->
+<div id="imageModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2><i class="fas fa-image"></i> <span id="imageModalTitle">Image</span></h2>
+            <button class="modal-close" onclick="closeModal('imageModal')">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align: center; padding: 2rem;">
+            <img id="modalImage" src="" alt="Document Image" style="max-width: 100%; max-height: 70vh; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2);" />
+        </div>
+    </div>
+</div>
+
+<!-- Toggle Active Modal (same as in Index.cshtml) -->
+<div id="toggleModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header" id="toggleModalHeader">
+            <h2><i class="fas fa-exclamation-triangle"></i> <span id="toggleModalTitle">Confirm Action</span></h2>
+            <button class="modal-close" onclick="closeModal('toggleModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="toggleMessage" class="toggle-message-text"></p>
+            <div class="toggle-modal-buttons">
+                <button onclick="closeModal('toggleModal')" class="btn-action btn-view toggle-modal-button">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button onclick="confirmToggle()" class="btn-action toggle-modal-button" id="toggleConfirmButton">
+                    <i class="fas fa-check"></i> <span id="toggleConfirmText">Confirm</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script>
+        let currentToggleId = null;
+        let currentToggleIsActive = null;
+
+        // Modal Functions
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Toggle Active Modal
+        function showToggleModal(patientId, patientName, isCurrentlyActive) {
+            currentToggleId = patientId;
+            currentToggleIsActive = isCurrentlyActive;
+            
+            const toggleModal = document.getElementById('toggleModal');
+            const toggleMessage = document.getElementById('toggleMessage');
+            const toggleTitle = document.getElementById('toggleModalTitle');
+            const toggleHeader = document.getElementById('toggleModalHeader');
+            const toggleConfirmButton = document.getElementById('toggleConfirmButton');
+            const toggleConfirmText = document.getElementById('toggleConfirmText');
+            
+            if (isCurrentlyActive) {
+                // Deactivating
+                toggleTitle.textContent = 'Confirm Deactivate';
+                toggleMessage.textContent = `Are you sure you want to deactivate patient "${patientName}"? They will no longer be able to login to the system.`;
+                toggleHeader.className = 'modal-header modal-header-danger';
+                toggleConfirmButton.className = 'btn-action btn-delete';
+                toggleConfirmButton.style.padding = '0.75rem 2rem';
+                toggleConfirmText.innerHTML = '<i class="fas fa-ban"></i> Deactivate';
+            } else {
+                // Activating
+                toggleTitle.textContent = 'Confirm Activate';
+                toggleMessage.textContent = `Are you sure you want to activate patient "${patientName}"? They will be able to login to the system again.`;
+                toggleHeader.className = 'modal-header';
+                toggleHeader.style.backgroundColor = '#28a745';
+                toggleHeader.style.color = 'white';
+                toggleConfirmButton.className = 'btn-action';
+                toggleConfirmButton.style.backgroundColor = '#28a745';
+                toggleConfirmButton.style.color = 'white';
+                toggleConfirmButton.style.padding = '0.75rem 2rem';
+                toggleConfirmText.innerHTML = '<i class="fas fa-check"></i> Activate';
+            }
+            
+            openModal('toggleModal');
+        }
+
+        async function confirmToggle() {
+            if (!currentToggleId) return;
+
+            const toggleModal = document.getElementById('toggleModal');
+            const modalBody = toggleModal.querySelector('.modal-body');
+            modalBody.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Updating...</div>';
+
+            try {
+                const formData = new FormData();
+                
+                // Get or create anti-forgery token
+                let token = document.querySelector('input[name="__RequestVerificationToken"]');
+                if (!token) {
+                    // Create a temporary form to get the token
+                    const tempForm = document.createElement('form');
+                    tempForm.innerHTML = '@Html.AntiForgeryToken()';
+                    token = tempForm.querySelector('input[name="__RequestVerificationToken"]');
+                }
+                
+                if (token) {
+                    formData.append('__RequestVerificationToken', token.value);
+                }
+
+                const response = await fetch(`/Precord/ToggleActivePatient/${currentToggleId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message || 'Patient status updated successfully!', 'success');
+                    closeModal('toggleModal');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error(result.message || 'Failed to update patient status');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error updating patient status. Please try again.', 'error');
+                closeModal('toggleModal');
+            }
+        }
+
+        // Edit Modal (for editing patient info)
+        async function showEditModal(patientId) {
+            // This will be handled by the modal from Index.cshtml if loaded via AJAX
+            // For now, redirect to edit page or use the same modal approach
+            window.location.href = `/Precord/EditPatient/${patientId}`;
+        }
+
+        // Image Modal Functions
+        function openImageModal(imageSrc, title) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalTitle = document.getElementById('imageModalTitle');
+            
+            modalImage.src = imageSrc;
+            modalTitle.textContent = title;
+            openModal('imageModal');
+        }
+
+        // Notification System
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                <div>${message}</div>
+            `;
+            notification.style.maxWidth = '500px';
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+
+        // Toggle Appointment Details - Simple and reliable
+        function toggleAppointmentDetails(header) {
+            if (!header) return;
+            
+            const appointmentItem = header.closest('.appointment-item');
+            if (!appointmentItem) return;
+            
+            const detailsRow = appointmentItem.querySelector('.appointment-details-row');
+            const chevron = header.querySelector('.appointment-chevron');
+            
+            if (!detailsRow) return;
+            
+            // Toggle the collapsed class
+            detailsRow.classList.toggle('appointment-details-collapsed');
+            
+            // Rotate chevron
+            if (chevron) {
+                if (detailsRow.classList.contains('appointment-details-collapsed')) {
+                    chevron.style.transform = 'rotate(0deg)';
+                } else {
+                    chevron.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+
+        // Toggle Medical Record Details - Simple and reliable
+        function toggleMedicalRecordDetails(header) {
+            if (!header) return;
+            
+            const recordItem = header.closest('.medical-record-item');
+            if (!recordItem) return;
+            
+            const recordGrid = recordItem.querySelector('.medical-record-grid');
+            const chevron = header.querySelector('.medical-record-chevron');
+            
+            if (!recordGrid) return;
+            
+            // Toggle the collapsed class
+            recordGrid.classList.toggle('medical-record-details-collapsed');
+            
+            // Rotate chevron
+            if (chevron) {
+                if (recordGrid.classList.contains('medical-record-details-collapsed')) {
+                    chevron.style.transform = 'rotate(0deg)';
+                } else {
+                    chevron.style.transform = 'rotate(180deg)';
+                }
+            }
+        }
+
+        // Make functions globally accessible
+        window.toggleAppointmentDetails = toggleAppointmentDetails;
+        window.toggleMedicalRecordDetails = toggleMedicalRecordDetails;
+
+        // Initialize event listeners - Run immediately and on DOMContentLoaded
+        // Make it globally accessible so it can be called from modal context
+        window.initCollapsibles = function initCollapsibles() {
+            console.log('Initializing collapsibles...');
+            
+            // Add click listeners to appointment headers
+            const appointmentHeaders = document.querySelectorAll('[data-toggle="appointment"]');
+            console.log('Found', appointmentHeaders.length, 'appointment headers');
+            appointmentHeaders.forEach((header, index) => {
+                // Remove any existing listeners by cloning
+                const newHeader = header.cloneNode(true);
+                header.parentNode.replaceChild(newHeader, header);
+                
+                newHeader.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Appointment header clicked, index:', index);
+                    toggleAppointmentDetails(this);
+                });
+            });
+
+            // Add click listeners to medical record headers
+            const medicalRecordHeaders = document.querySelectorAll('[data-toggle="medical-record"]');
+            console.log('Found', medicalRecordHeaders.length, 'medical record headers');
+            medicalRecordHeaders.forEach((header, index) => {
+                // Remove any existing listeners by cloning
+                const newHeader = header.cloneNode(true);
+                header.parentNode.replaceChild(newHeader, header);
+                
+                newHeader.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Medical record header clicked, index:', index);
+                    toggleMedicalRecordDetails(this);
+                });
+            });
+        }
+
+        // Run immediately if DOM is ready, otherwise wait
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initCollapsibles);
+        } else {
+            initCollapsibles();
+        }
+        
+        // Also run after a short delay to catch dynamically loaded content
+        setTimeout(initCollapsibles, 100);
+
+        // Simple File Upload Handler - Opens native file explorer
+        window.handleFileUpload = function(patientId) {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput) {
+                showNotification('File input not found. Please refresh the page.', 'error');
+                return;
+            }
+            
+            // If no file selected, trigger file picker
+            if (!fileInput.files || !fileInput.files[0]) {
+                fileInput.click();
+                // Wait for file selection, then auto-upload
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        uploadMedicalRecordFileDirect(patientId);
+                    }
+                }, { once: true });
+            } else {
+                // File already selected, upload it
+                uploadMedicalRecordFileDirect(patientId);
+            }
+        };
+        
+        // Direct upload function (no modal needed)
+        window.uploadMedicalRecordFileDirect = async function(patientId) {
+            const form = document.getElementById('uploadFileForm');
+            const fileInput = document.getElementById('fileInput');
+            
+            if (!form || !fileInput) {
+                showNotification('Upload form not found. Please refresh the page.', 'error');
+                return;
+            }
+            
+            if (!fileInput.files || !fileInput.files[0]) {
+                showNotification('Please select a file to upload.', 'error');
+                fileInput.click();
+                return;
+            }
+
+            const formData = new FormData();
+            
+            // Get anti-forgery token
+            let token = form.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) {
+                formData.append('__RequestVerificationToken', token.value);
+            }
+            
+            formData.append('patientId', patientId);
+            formData.append('file', fileInput.files[0]);
+            
+            const description = document.getElementById('fileDescription');
+            if (description && description.value) {
+                formData.append('description', description.value.trim());
+            }
+
+            const uploadButton = document.getElementById('uploadFileButton');
+            if (uploadButton) {
+                uploadButton.disabled = true;
+                uploadButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            }
+
+            try {
+                const response = await fetch('/Precord/UploadMedicalRecordFile', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                let result;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    try {
+                        result = JSON.parse(text);
+                    } catch {
+                        throw new Error(text || 'Failed to upload file');
+                    }
+                }
+
+                if (result.success) {
+                    showNotification('File uploaded successfully!', 'success');
+                    form.reset();
+                    // Reload the files list
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error(result.message || 'Failed to upload file');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification(error.message || 'Error uploading file. Please try again.', 'error');
+            } finally {
+                if (uploadButton) {
+                    uploadButton.disabled = false;
+                    uploadButton.innerHTML = '<i class="fas fa-upload"></i> Upload';
+                }
+            }
+        };
+        
+        // Legacy function for backward compatibility (if called from elsewhere)
+        window.showUploadFileModal = function(patientId) {
+            // Just trigger file input click instead of opening modal
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.click();
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        uploadMedicalRecordFileDirect(patientId);
+                    }
+                }, { once: true });
+            } else {
+                handleFileUpload(patientId);
+            }
+        };
+        
+        // Keep old function name for backward compatibility - redirects to new function
+        window.uploadMedicalRecordFile = async function(patientId) {
+            return window.uploadMedicalRecordFileDirect(patientId);
+        };
+
+        window.deleteMedicalRecordFile = async function(fileId) {
+            if (!confirm('Are you sure you want to delete this file?')) {
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                let token = document.querySelector('input[name="__RequestVerificationToken"]');
+                if (token) {
+                    formData.append('__RequestVerificationToken', token.value);
+                }
+
+                const response = await fetch(`/Precord/DeleteMedicalRecordFile/${fileId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('File deleted successfully!', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    throw new Error(result.message || 'Failed to delete file');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification(error.message || 'Error deleting file. Please try again.', 'error');
+            }
+        };
+    </script>
+}
+

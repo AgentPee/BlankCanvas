@@ -1,0 +1,1812 @@
+@model QuickClinique.Controllers.DashboardViewModel
+@{
+    ViewData["Title"] = "Clinic Staff Dashboard";
+    Layout = "_Layout";
+}
+
+@functions {
+    private string GetNotificationRedirectUrl(QuickClinique.Models.Notification notification)
+    {
+        var content = notification.Content ?? "";
+        var patientId = notification.PatientId;
+
+        // Check notification content to determine type and redirect URL
+        if (content.Contains("appointment booked", StringComparison.OrdinalIgnoreCase) ||
+            content.Contains("appointment set", StringComparison.OrdinalIgnoreCase))
+        {
+            // For appointment notifications, redirect to appointments management
+            if (patientId > 0)
+            {
+                return Url.Action("Manage", "Appointments");
+            }
+            return Url.Action("Manage", "Appointments");
+        }
+        else if (content.Contains("patient email verified", StringComparison.OrdinalIgnoreCase) ||
+                 content.Contains("patient registered", StringComparison.OrdinalIgnoreCase))
+        {
+            // For patient notifications, redirect to patient management
+            if (patientId > 0)
+            {
+                return Url.Action("Details", "Precord", new { id = patientId });
+            }
+            return Url.Action("Index", "Precord");
+        }
+        else if (content.Contains("clinic staff email verified", StringComparison.OrdinalIgnoreCase) ||
+                 content.Contains("clinic staff registered", StringComparison.OrdinalIgnoreCase))
+        {
+            // For staff notifications, redirect to clinic staff management
+            return Url.Action("Index", "Clinicstaff");
+        }
+        else if (patientId > 0)
+        {
+            // If notification has a patient ID but content doesn't match known patterns,
+            // redirect to patient details as default
+            return Url.Action("Details", "Precord", new { id = patientId });
+        }
+
+        // Default: stay on dashboard
+        return Url.Action("Index", "Dashboard");
+    }
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/dashboard-index.css" asp-append-version="true" />
+}
+
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <h1><i class="fas fa-tachometer-alt"></i> Clinic Staff Dashboard</h1>
+        <p>Welcome, @Context.Session.GetString("ClinicStaffName")! Here's what's happening today.</p>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card total">
+            <div class="stat-number">@Model.TotalAppointments</div>
+            <div class="stat-label">Total Appointments</div>
+        </div>
+        <div class="stat-card pending">
+            <div class="stat-number">@Model.PendingCount</div>
+            <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-card confirmed">
+            <div class="stat-number">@Model.ConfirmedCount</div>
+            <div class="stat-label">Confirmed</div>
+        </div>
+        <div class="stat-card completed">
+            <div class="stat-number">@Model.CompletedCount</div>
+            <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card patients">
+            <div class="stat-number">@Model.TotalPatients</div>
+            <div class="stat-label">Total Patients</div>
+        </div>
+        <div class="stat-card slots">
+            <div class="stat-number">@Model.AvailableSlots</div>
+            <div class="stat-label">Available Slots</div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-grid">
+        <div class="main-content">
+            <!-- Today's Appointments -->
+            <div class="appointments-section">
+                <div class="section-header">
+                    <h3 class="section-title"><i class="fas fa-calendar-day"></i> Today's Appointments</h3>
+                    <button class="refresh-btn" onclick="refreshQueue()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+
+                @if (Model.TodaysAppointments.Any())
+                {
+                    @foreach (var appointment in Model.TodaysAppointments)
+                    {
+                        <div class="appointment-item">
+                            <div class="appointment-info">
+                                <div class="patient-name">@appointment.Patient.FirstName @appointment.Patient.LastName</div>
+                                <div class="appointment-details">
+                                    Queue #@appointment.QueueNumber |
+                                    @appointment.Schedule.StartTime - @appointment.Schedule.EndTime |
+                                    @appointment.ReasonForVisit
+                                </div>
+                            </div>
+                            <div class="appointment-actions">
+                                @{
+                                    var statusClass = appointment.AppointmentStatus switch
+                                    {
+                                        "Pending" => "status-badge pending",
+                                        "Confirmed" => "status-badge confirmed",
+                                        "In Progress" => "status-badge in-progress",
+                                        "Completed" => "status-badge completed",
+                                        "Cancelled" => "status-badge cancelled",
+                                        _ => "status-badge"
+                                    };
+                                }
+                                <span class="@statusClass">@appointment.AppointmentStatus</span>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                        <p>No appointments scheduled for today.</p>
+                    </div>
+                }
+            </div>
+
+            <!-- Pending Appointments -->
+            <div class="appointments-section">
+                <div class="section-header">
+                    <h3 class="section-title"><i class="fas fa-clock"></i> Pending Appointments</h3>
+                </div>
+
+                @if (Model.PendingAppointments.Any())
+                {
+                    @foreach (var appointment in Model.PendingAppointments)
+                    {
+                        <div class="appointment-item">
+                            <div class="appointment-info">
+                                <div class="patient-name">@appointment.Patient.FirstName @appointment.Patient.LastName</div>
+                                <div class="appointment-details">
+                                    @appointment.Schedule.Date.ToString("MMM dd, yyyy") |
+                                    @appointment.Schedule.StartTime - @appointment.Schedule.EndTime |
+                                    @appointment.ReasonForVisit
+                                </div>
+                            </div>
+                            @*<div class="appointment-actions">
+                                <button class="status-btn confirm"
+                                        data-appointment-id="@appointment.AppointmentId"
+                                        data-status="Confirmed"
+                                        onclick="updateAppointmentStatus(this.getAttribute('data-appointment-id'), this.getAttribute('data-status'))">
+                                    Confirm
+                                </button>
+                                <button class="status-btn cancel"
+                                        data-appointment-id="@appointment.AppointmentId"
+                                        data-status="Cancelled"
+                                        onclick="updateAppointmentStatus(this.getAttribute('data-appointment-id'), this.getAttribute('data-status'))">
+                                    Cancel
+                                </button>
+                            </div>*@
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle fa-3x mb-3"></i>
+                        <p>All appointments are up to date!</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <h4 class="section-title"><i class="fas fa-bolt"></i> Quick Actions</h4>
+                <a href="@Url.Action("Availability", "Schedule")" class="action-btn">
+                    <i class="fas fa-calendar-plus"></i> Manage Schedules
+                </a>
+                <a href="@Url.Action("Manage", "Appointments")" class="action-btn">
+                    <i class="fas fa-list"></i> Manage Appointments
+                </a>
+                <a href="@Url.Action("Index", "Precord")" class="action-btn">
+                    <i class="fas fa-users"></i> Manage Patients
+                </a>
+                <a href="@Url.Action("Analytics", "Clinicstaff")" class="action-btn">
+                    <i class="fas fa-chart-bar"></i> Analytics Review
+                </a>
+                <button type="button" class="action-btn secondary" onclick="openWalkInModal()">
+                    <i class="fas fa-user-plus"></i> Walk-in Schedule
+                </button>
+            </div>
+
+            @* Recent Notifications *@
+            <div class="notifications-panel">
+                <div class="notifications-header">
+                    <h4 class="section-title">
+                        <i class="fas fa-bell"></i> Recent Notifications
+                        <span class="notification-badge" id="unreadNotificationBadge" style="display: none;">0</span>
+                    </h4>
+                    <div class="notification-actions">
+                        <button type="button" class="mark-all-read-btn" id="markAllReadBtn" style="display: none;" onclick="markAllNotificationsAsRead()">
+                            <i class="fas fa-check-double"></i> Mark all read
+                        </button>
+                        <button type="button" class="clear-read-btn" id="clearReadBtn" style="display: none;" onclick="clearReadNotifications()">
+                            <i class="fas fa-trash-alt"></i> Clear read
+                        </button>
+                    </div>
+                </div>
+
+                <div id="notificationsContainer" class="notifications-scrollable">
+                    @if (Model.RecentNotifications.Any())
+                    {
+                        @foreach (var notification in Model.RecentNotifications)
+                        {
+                            var isUnread = notification.IsRead != "Yes";
+                            var notificationClass = isUnread ? "notification-item unread" : "notification-item";
+                            var redirectUrl = GetNotificationRedirectUrl(notification);
+                            <div class="@notificationClass" data-notification-id="@notification.NotificationId" data-redirect-url="@Html.Raw(redirectUrl)" onclick="handleNotificationClick(@notification.NotificationId, this)">
+                                <div class="notification-content">
+                                    @if (notification.Patient != null)
+                                    {
+                                        <div class="notification-patient">
+                                            <i class="fas fa-user"></i> @notification.Patient.FirstName @notification.Patient.LastName
+                                        </div>
+                                    }
+                                    <div class="notification-text">@notification.Content</div>
+                                </div>
+                                <div class="notification-footer">
+                                    <div class="notification-time">
+                                        @notification.NotifDateTime.ToString("MMM dd, HH:mm")
+                                    </div>
+                                    @if (isUnread)
+                                    {
+                                        <span class="notification-unread-indicator">
+                                            <i class="fas fa-circle"></i>
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-3">
+                            <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                            <p>No recent notifications</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Messages Section -->
+    <div class="messages-section">
+        <div class="messages-header">
+            <h3 class="section-title"><i class="fas fa-comments"></i> Patient Messages</h3>
+            <button class="refresh-btn" onclick="loadPatientMessages()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+
+        <div class="messages-content">
+            <!-- Patient List -->
+            <div class="patient-list">
+                <div class="patient-search-panel">
+                    <label for="patientSearchInput">Search by patient ID number</label>
+                    <div class="patient-search-bar">
+                        <input type="text"
+                               id="patientSearchInput"
+                               placeholder="Enter ID number"
+                               inputmode="numeric"
+                               maxlength="12"
+                               autocomplete="off">
+                        <button type="button" id="patientSearchButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <small class="patient-search-feedback" id="patientSearchFeedback">
+                        Type a patient ID number to quickly open a chat
+                    </small>
+                </div>
+
+                <div id="patientSearchResults" class="patient-search-results"></div>
+
+                <div class="patient-list-items" id="patientList">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No messages yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area" id="chatArea">
+                <div class="chat-empty">
+                    <i class="fas fa-comments fa-3x"></i>
+                    <p>Select a patient to view messages</p>
+                </div>
+                <div class="chat-content chat-content-hidden">
+                    <div class="chat-header-patient">
+                        <span id="selectedPatientName">Patient Name</span>
+                    </div>
+                    <div class="chat-messages-staff" id="chatMessagesStaff"></div>
+                    <div class="chat-input-staff">
+                        <input type="text" id="replyInput" placeholder="Type your reply..." maxlength="500">
+                        <button class="send-reply-btn" id="sendReply">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Walk-In Patient Intake Modal -->
+<div id="walkInModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content walk-in-modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-user-plus"></i> Walk-In Patient Intake</h3>
+            <button type="button" class="modal-close" onclick="closeWalkInModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="walkInForm" onsubmit="submitWalkInForm(event)">
+            <div class="modal-body">
+                <div id="walkInErrorAlert" class="alert alert-danger" style="display: none;"></div>
+                
+                <div class="form-group">
+                    <label for="studentIdNumber">Student ID Number <span class="text-danger">*</span></label>
+                    <input type="text" id="studentIdNumber" name="studentIdNumber" class="form-control" required inputmode="numeric">
+                    <div class="invalid-feedback"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="studentFullName">Student Full Name <span class="text-danger">*</span></label>
+                    <input type="text" id="studentFullName" name="studentFullName" class="form-control" required readonly>
+                    <div class="invalid-feedback"></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="appointmentDate">Appointment Date <span class="text-danger">*</span></label>
+                        <input type="date" id="appointmentDate" name="appointmentDate" class="form-control" required>
+                        <div class="invalid-feedback"></div>
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="appointmentTime">Appointment Time <span class="text-danger">*</span></label>
+                        <input type="time" id="appointmentTime" name="appointmentTime" class="form-control" required>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="reasonForVisit">Reason for Visit <span class="text-danger">*</span></label>
+                    <textarea id="reasonForVisit" name="reasonForVisit" class="form-control" rows="4" required></textarea>
+                    <div class="invalid-feedback"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="priorityLevel">Priority Level <span class="text-danger">*</span></label>
+                    <select id="priorityLevel" name="priorityLevel" class="form-control" required>
+                        <option value="">Select Priority Level</option>
+                        <option value="Priority">Priority (automatically next in queue)</option>
+                        <option value="Regular">Regular</option>
+                    </select>
+                    <div class="invalid-feedback"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeWalkInModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="submitWalkInBtn">
+                    <i class="fas fa-plus"></i> Add to Queue
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@await Html.PartialAsync("_EmergencyPolling")
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+    <script>
+        // Update dashboard data in the background without page reload
+        async function refreshDashboardData() {
+            try {
+                const response = await fetch('/Dashboard/GetDashboardData');
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    // Update statistics
+                    updateStatistics(result.data.stats);
+                    
+                    // Update today's appointments
+                    updateTodaysAppointments(result.data.todaysAppointments);
+                    
+                    // Update pending appointments
+                    updatePendingAppointments(result.data.pendingAppointments);
+                    
+                    // Update recent notifications
+                    updateRecentNotifications(result.data.recentNotifications);
+                    
+                    // Update unread count badge
+                    updateUnreadNotificationBadge(result.data.unreadNotificationCount || 0);
+                    
+                    return true;
+                } else {
+                    console.error('Failed to refresh dashboard data:', result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error refreshing dashboard data:', error);
+                return false;
+            }
+        }
+
+        // Update statistics cards
+        function updateStatistics(stats) {
+            document.querySelector('.stat-card.total .stat-number').textContent = stats.totalAppointments;
+            document.querySelector('.stat-card.pending .stat-number').textContent = stats.pendingCount;
+            document.querySelector('.stat-card.confirmed .stat-number').textContent = stats.confirmedCount;
+            document.querySelector('.stat-card.completed .stat-number').textContent = stats.completedCount;
+            document.querySelector('.stat-card.patients .stat-number').textContent = stats.totalPatients;
+            document.querySelector('.stat-card.slots .stat-number').textContent = stats.availableSlots;
+        }
+
+        // Update today's appointments list
+        function updateTodaysAppointments(appointments) {
+            // Find the first appointments-section (Today's Appointments)
+            const todaysSection = document.querySelectorAll('.appointments-section')[0];
+            if (!todaysSection) return;
+
+            // Find all appointment items in this section
+            const existingItems = todaysSection.querySelectorAll('.appointment-item');
+            existingItems.forEach(item => item.remove());
+
+            // Also remove empty state if it exists
+            const emptyState = todaysSection.querySelector('.text-center.text-muted');
+            if (emptyState) emptyState.remove();
+            
+            if (appointments.length === 0) {
+                todaysSection.insertAdjacentHTML('beforeend', `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-calendar-times fa-3x mb-3"></i>
+                        <p>No appointments scheduled for today.</p>
+                    </div>
+                `);
+                return;
+            }
+
+            // Sort appointments by queue number descending, then by time descending
+            const sortedAppointments = appointments.sort((a, b) => {
+                // First sort by queue number (descending)
+                if (b.queueNumber !== a.queueNumber) {
+                    return (b.queueNumber || 0) - (a.queueNumber || 0);
+                }
+                // If queue numbers are equal, sort by time (descending - latest first)
+                // Extract time from timeSlot string (format: "HH:mm - HH:mm")
+                const timeA = a.timeSlot ? a.timeSlot.split(' - ')[0] : '';
+                const timeB = b.timeSlot ? b.timeSlot.split(' - ')[0] : '';
+                return timeB.localeCompare(timeA);
+            });
+
+            // Add new appointments
+            sortedAppointments.forEach(appointment => {
+                const statusClass = getStatusClass(appointment.status);
+                const appointmentHtml = `
+                    <div class="appointment-item">
+                        <div class="appointment-info">
+                            <div class="patient-name">${escapeHtml(appointment.patientName)}</div>
+                            <div class="appointment-details">
+                                Queue #${appointment.queueNumber} |
+                                ${appointment.timeSlot} |
+                                ${escapeHtml(appointment.reason)}
+                            </div>
+                        </div>
+                        <div class="appointment-actions">
+                            <span class="status-badge ${statusClass}">${escapeHtml(appointment.status)}</span>
+                        </div>
+                    </div>
+                `;
+                todaysSection.insertAdjacentHTML('beforeend', appointmentHtml);
+            });
+        }
+
+        // Update pending appointments list
+        function updatePendingAppointments(appointments) {
+            // Find the second appointments-section (Pending Appointments)
+            const pendingSection = document.querySelectorAll('.appointments-section')[1];
+            if (!pendingSection) return;
+
+            // Find all appointment items in this section
+            const existingItems = pendingSection.querySelectorAll('.appointment-item');
+            existingItems.forEach(item => item.remove());
+
+            // Also remove empty state if it exists
+            const emptyState = pendingSection.querySelector('.text-center.text-muted');
+            if (emptyState) emptyState.remove();
+
+            if (appointments.length === 0) {
+                pendingSection.insertAdjacentHTML('beforeend', `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-check-circle fa-3x mb-3"></i>
+                        <p>All appointments are up to date!</p>
+                    </div>
+                `);
+                return;
+            }
+
+            // Add new appointments
+            appointments.forEach(appointment => {
+                const appointmentHtml = `
+                    <div class="appointment-item">
+                        <div class="appointment-info">
+                            <div class="patient-name">${escapeHtml(appointment.patientName)}</div>
+                            <div class="appointment-details">
+                                ${appointment.scheduleDate} |
+                                ${appointment.timeSlot} |
+                                ${escapeHtml(appointment.reason)}
+                            </div>
+                        </div>
+                        <div class="appointment-actions">
+                            <button class="status-btn confirm"
+                                    data-appointment-id="${appointment.appointmentId}"
+                                    data-status="Confirmed"
+                                    onclick="updateAppointmentStatus(this.getAttribute('data-appointment-id'), this.getAttribute('data-status'))">
+                                Confirm
+                            </button>
+                            <button class="status-btn cancel"
+                                    data-appointment-id="${appointment.appointmentId}"
+                                    data-status="Cancelled"
+                                    onclick="updateAppointmentStatus(this.getAttribute('data-appointment-id'), this.getAttribute('data-status'))">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+                pendingSection.insertAdjacentHTML('beforeend', appointmentHtml);
+            });
+        }
+
+        // Update recent notifications
+        function updateRecentNotifications(notifications) {
+            const notificationsContainer = document.getElementById('notificationsContainer');
+            if (!notificationsContainer) return;
+
+            // Clear existing notifications
+            notificationsContainer.innerHTML = '';
+
+            if (notifications.length === 0) {
+                notificationsContainer.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                        <p>No recent notifications</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Separate unread and read notifications
+            const unreadNotifications = notifications.filter(n => !n.isRead);
+            const readNotifications = notifications.filter(n => n.isRead);
+
+            // Add unread notifications section
+            if (unreadNotifications.length > 0) {
+                unreadNotifications.forEach(notification => {
+                    const patientNameHtml = notification.patientName 
+                        ? `<div class="notification-patient"><i class="fas fa-user"></i> ${escapeHtml(notification.patientName)}</div>`
+                        : '';
+                    const redirectUrl = notification.redirectUrl || '#';
+                    const notificationHtml = `
+                        <div class="notification-item unread" data-notification-id="${notification.notificationId}" data-redirect-url="${redirectUrl}" onclick="handleNotificationClick(${notification.notificationId}, this)">
+                            <div class="notification-content">
+                                ${patientNameHtml}
+                                <div class="notification-text">${escapeHtml(notification.content)}</div>
+                            </div>
+                            <div class="notification-footer">
+                                <div class="notification-time">${notification.dateTime}</div>
+                                <span class="notification-unread-indicator"><i class="fas fa-circle"></i></span>
+                            </div>
+                        </div>
+                    `;
+                    notificationsContainer.insertAdjacentHTML('beforeend', notificationHtml);
+                });
+            }
+
+            // Add read notifications section
+            if (readNotifications.length > 0) {
+                readNotifications.forEach(notification => {
+                    const patientNameHtml = notification.patientName 
+                        ? `<div class="notification-patient"><i class="fas fa-user"></i> ${escapeHtml(notification.patientName)}</div>`
+                        : '';
+                    const redirectUrl = notification.redirectUrl || '#';
+                    const notificationHtml = `
+                        <div class="notification-item" data-notification-id="${notification.notificationId}" data-redirect-url="${redirectUrl}" onclick="handleNotificationClick(${notification.notificationId}, this)">
+                            <div class="notification-content">
+                                ${patientNameHtml}
+                                <div class="notification-text">${escapeHtml(notification.content)}</div>
+                            </div>
+                            <div class="notification-footer">
+                                <div class="notification-time">${notification.dateTime}</div>
+                            </div>
+                        </div>
+                    `;
+                    notificationsContainer.insertAdjacentHTML('beforeend', notificationHtml);
+                });
+            }
+
+            // Update clear read button visibility
+            updateUnreadNotificationBadge(0);
+        }
+
+        // Update unread notification badge
+        function updateUnreadNotificationBadge(count) {
+            const badge = document.getElementById('unreadNotificationBadge');
+            const markAllBtn = document.getElementById('markAllReadBtn');
+            const clearReadBtn = document.getElementById('clearReadBtn');
+            const notificationsContainer = document.getElementById('notificationsContainer');
+            
+            if (badge) {
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline-block';
+                    if (markAllBtn) markAllBtn.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                    if (markAllBtn) markAllBtn.style.display = 'none';
+                }
+            }
+
+            // Show/hide clear read button based on whether there are read notifications
+            if (clearReadBtn && notificationsContainer) {
+                const readNotifications = notificationsContainer.querySelectorAll('.notification-item:not(.unread)');
+                if (readNotifications.length > 0) {
+                    clearReadBtn.style.display = 'block';
+                } else {
+                    clearReadBtn.style.display = 'none';
+                }
+            }
+        }
+
+        // Handle notification click - mark as read and redirect
+        async function handleNotificationClick(notificationId, element) {
+            // Get redirect URL from data attribute
+            const redirectUrl = element?.getAttribute('data-redirect-url') || '';
+            
+            // Mark as read first (fire-and-forget, don't wait for completion)
+            markNotificationAsRead(notificationId, element);
+            
+            // Redirect to the appropriate page
+            if (redirectUrl && redirectUrl !== '#' && redirectUrl !== '') {
+                // Small delay to allow mark as read request to be sent before redirect
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 200);
+            }
+        }
+
+        // Mark notification as read
+        async function markNotificationAsRead(notificationId, element) {
+            try {
+                const response = await fetch('/Dashboard/MarkNotificationAsRead', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ notificationId: notificationId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Remove unread class and indicator
+                    if (element) {
+                        element.classList.remove('unread');
+                        const indicator = element.querySelector('.notification-unread-indicator');
+                        if (indicator) indicator.remove();
+                    }
+
+                    // Update unread count badge
+                    updateUnreadNotificationBadge(result.unreadCount || 0);
+                }
+            } catch (error) {
+                console.error('Error marking notification as read:', error);
+            }
+        }
+
+        // Mark all notifications as read
+        async function markAllNotificationsAsRead() {
+            try {
+                const response = await fetch('/Dashboard/MarkAllNotificationsAsRead', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Remove unread class from all notifications
+                    document.querySelectorAll('.notification-item.unread').forEach(item => {
+                        item.classList.remove('unread');
+                        const indicator = item.querySelector('.notification-unread-indicator');
+                        if (indicator) indicator.remove();
+                    });
+
+                    // Update unread count badge
+                    updateUnreadNotificationBadge(0);
+
+                    // Show clear read button since all are now read
+                    const clearReadBtn = document.getElementById('clearReadBtn');
+                    if (clearReadBtn) {
+                        clearReadBtn.style.display = 'block';
+                    }
+
+                    // Refresh dashboard data to update the list
+                    setTimeout(() => {
+                        refreshDashboardData();
+                    }, 500);
+                }
+            } catch (error) {
+                console.error('Error marking all notifications as read:', error);
+            }
+        }
+
+        // Clear read notifications
+        async function clearReadNotifications() {
+            if (!confirm('Are you sure you want to clear all read notifications? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/Dashboard/ClearReadNotifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Remove all read notifications from the DOM
+                    const notificationsContainer = document.getElementById('notificationsContainer');
+                    if (notificationsContainer) {
+                        const readNotifications = notificationsContainer.querySelectorAll('.notification-item:not(.unread)');
+                        readNotifications.forEach(item => item.remove());
+
+                        // If no notifications remain, show empty state
+                        if (notificationsContainer.querySelectorAll('.notification-item').length === 0) {
+                            notificationsContainer.innerHTML = `
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                                    <p>No recent notifications</p>
+                                </div>
+                            `;
+                        }
+                    }
+
+                    // Hide clear read button
+                    const clearReadBtn = document.getElementById('clearReadBtn');
+                    if (clearReadBtn) {
+                        clearReadBtn.style.display = 'none';
+                    }
+
+                    // Update unread count badge
+                    updateUnreadNotificationBadge(result.unreadCount || 0);
+
+                    // Show success message
+                    showMessage('Read notifications cleared successfully', 'success');
+                } else {
+                    showMessage(result.error || 'Failed to clear read notifications', 'error');
+                }
+            } catch (error) {
+                console.error('Error clearing read notifications:', error);
+                showMessage('An error occurred while clearing read notifications', 'error');
+            }
+        }
+
+        // Get status class for badge styling
+        function getStatusClass(status) {
+            switch (status) {
+                case "Pending": return "pending";
+                case "Confirmed": return "confirmed";
+                case "In Progress": return "in-progress";
+                case "Completed": return "completed";
+                case "Cancelled": return "cancelled";
+                default: return "";
+            }
+        }
+
+        function updateAppointmentStatus(appointmentId, status) {
+            console.log('updateAppointmentStatus called with (raw):', { appointmentId, status });
+            console.log('appointmentId type:', typeof appointmentId);
+            console.log('status type:', typeof status);
+
+            // Parse appointmentId to integer
+            const parsedId = parseInt(appointmentId, 10);
+
+            console.log('Parsed appointmentId:', parsedId);
+
+            if (!appointmentId || appointmentId === '0' || isNaN(parsedId) || parsedId === 0) {
+                console.error('appointmentId is missing or invalid:', appointmentId, 'parsed:', parsedId);
+                showMessage('Error: Invalid appointment ID', 'error');
+                return;
+            }
+
+            if (!status || status.trim() === '') {
+                console.error('status is missing or invalid:', status);
+                showMessage('Error: Invalid status', 'error');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to ${status.toLowerCase()} this appointment?`)) {
+                return;
+            }
+
+            const requestData = {
+                appointmentId: parsedId,
+                status: status
+            };
+
+            console.log('Sending request:', requestData);
+
+            fetch('/Dashboard/UpdateAppointmentStatus', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // Refresh dashboard data in background instead of reloading page
+                    setTimeout(() => {
+                        refreshDashboardData();
+                    }, 500);
+                } else {
+                    showMessage(data.message || 'Failed to update appointment', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showMessage('An error occurred while updating the appointment: ' + error.message, 'error');
+            });
+        }
+
+        function refreshQueue() {
+            // Refresh all dashboard data in the background
+            refreshDashboardData().then(success => {
+                if (success) {
+                    showMessage('Dashboard refreshed successfully!', 'success');
+                } else {
+                    showMessage('Error refreshing dashboard.', 'error');
+                }
+            });
+        }
+
+        function showMessage(message, type) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+            const alertHtml = `
+                <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+
+            // Insert at the top of the dashboard container
+            const container = document.querySelector('.dashboard-container');
+            container.insertAdjacentHTML('afterbegin', alertHtml);
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const alert = container.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        // Auto-refresh every 30 seconds (background refresh, no page reload)
+        setInterval(() => {
+            refreshDashboardData();
+        }, 30000);
+
+        // ===== MESSAGING FUNCTIONALITY =====
+        let selectedPatientUserId = null;
+        let messagesInterval = null;
+        let patientDirectory = [];
+        let patientDirectoryLoaded = false;
+        let patientDirectoryLoading = false;
+        let connection = null;
+        let currentStaffUserId = null;
+
+        // Initialize messaging when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load patient messages on page load
+            await loadPatientMessages();
+            loadPatientDirectory();
+
+            // Initialize SignalR connection
+            await initializeSignalR();
+
+            // Initialize patient search interactions
+            setupPatientSearchHandlers();
+
+            // Send reply button click
+            document.getElementById('sendReply').addEventListener('click', sendReplyToPatient);
+
+            // Send reply on Enter key
+            document.getElementById('replyInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendReplyToPatient();
+                }
+            });
+
+            // Initialize unread notification count from server-rendered notifications
+            initializeUnreadNotificationCountFromServer();
+        });
+
+        // Initialize unread notification count from server-rendered notifications
+        function initializeUnreadNotificationCountFromServer() {
+            const unreadNotifications = document.querySelectorAll('.notification-item.unread');
+            const unreadCount = unreadNotifications.length;
+            updateUnreadNotificationBadge(unreadCount);
+            
+            // Check for read notifications and show clear button if any exist
+            const readNotifications = document.querySelectorAll('.notification-item:not(.unread)');
+            const clearReadBtn = document.getElementById('clearReadBtn');
+            if (clearReadBtn && readNotifications.length > 0) {
+                clearReadBtn.style.display = 'block';
+            }
+        }
+
+        // Initialize unread notification count on page load (via API)
+        async function initializeUnreadNotificationCount() {
+            try {
+                const response = await fetch('/Dashboard/GetUnreadNotificationCount');
+                const result = await response.json();
+                if (result.success) {
+                    updateUnreadNotificationBadge(result.unreadCount || 0);
+                }
+            } catch (error) {
+                console.error('Error getting unread notification count:', error);
+            }
+        }
+
+        // Initialize SignalR connection
+        async function initializeSignalR() {
+            console.log('Initializing SignalR for clinic staff...');
+
+            // Get current staff user ID from the messages endpoint
+            try {
+                const response = await fetch('/Dashboard/GetMessages');
+                const result = await response.json();
+                if (result.success && result.currentUserId) {
+                    currentStaffUserId = result.currentUserId;
+                }
+            } catch (error) {
+                console.error('Error getting current user ID:', error);
+            }
+
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/messageHub")
+                .withAutomaticReconnect()
+                .build();
+
+            // Handle incoming messages
+            connection.on("ReceiveMessage", function (message) {
+                console.log('Received message via SignalR:', message);
+                
+                // If message is for currently selected patient, add it to chat
+                if (selectedPatientUserId && 
+                    (message.senderId === selectedPatientUserId || message.receiverId === selectedPatientUserId)) {
+                    addMessageToStaffChat(message);
+                }
+                
+                // Always refresh patient list to update last message
+                loadPatientMessages();
+            });
+
+            // Handle connection events
+            connection.onreconnecting(() => {
+                console.log('SignalR reconnecting...');
+            });
+
+            connection.onreconnected(() => {
+                console.log('SignalR reconnected');
+                // Rejoin clinic staff group after reconnection
+                connection.invoke("JoinClinicStaffGroup").catch(err => console.error(err));
+            });
+
+            connection.onclose(() => {
+                console.log('SignalR connection closed');
+            });
+
+            // Start connection
+            try {
+                await connection.start();
+                console.log('SignalR connected');
+
+                // Join clinic staff group
+                await connection.invoke("JoinClinicStaffGroup");
+                console.log('Joined clinic staff group');
+            } catch (err) {
+                console.error('Error starting SignalR connection:', err);
+                // Fallback to polling if SignalR fails
+                startMessagingAutoRefresh();
+            }
+        }
+
+        // Load patient messages grouped by patient
+        async function loadPatientMessages() {
+            try {
+                const response = await fetch('/Dashboard/GetPatientMessages');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    displayPatientList(result.data);
+                } else {
+                    console.error('Failed to load patient messages:', result.error);
+                }
+            } catch (error) {
+                console.error('Error loading patient messages:', error);
+            }
+        }
+
+        // Display patient list
+        function displayPatientList(patients) {
+            const patientList = document.getElementById('patientList');
+            
+            if (patients.length === 0) {
+                patientList.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No messages yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            patientList.innerHTML = patients.map(patient => {
+                const safeName = escapeHtml(patient.patientName);
+                const lastMessageText = patient.lastMessage ? patient.lastMessage : '';
+                const preview = escapeHtml(lastMessageText.substring(0, 30));
+                const needsEllipsis = lastMessageText.length > 30 ? '...' : '';
+                const isActive = selectedPatientUserId === patient.patientUserId ? 'active' : '';
+
+                return `
+                    <div class="patient-item ${isActive}" 
+                         data-user-id="${patient.patientUserId}"
+                         role="button"
+                         onclick="selectPatientFromList(event, ${patient.patientUserId}, '${safeName}')">
+                        <div class="patient-info">
+                            <div class="patient-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="patient-details">
+                                <div class="patient-name">${safeName}</div>
+                                <div class="last-message">${preview}${needsEllipsis}</div>
+                            </div>
+                        </div>
+                        <div class="message-time">${formatMessageTime(patient.lastMessageTime)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectPatientFromList(event, patientUserId, patientName) {
+            const sourceElement = event.currentTarget || event.target.closest('.patient-item');
+            selectPatient(patientUserId, patientName, null, sourceElement);
+        }
+
+        // Select a patient and load their messages
+        async function selectPatient(patientUserId, patientName, idNumber = null, sourceElement = null) {
+            selectedPatientUserId = patientUserId;
+
+            const patientDisplayName = idNumber ? `ID ${idNumber} • ${patientName}` : patientName;
+
+            // Update UI
+            document.getElementById('selectedPatientName').textContent = patientDisplayName;
+            const chatEmptyState = document.querySelector('.chat-empty');
+            if (chatEmptyState) {
+                chatEmptyState.style.display = 'none';
+            }
+            const chatContent = document.querySelector('.chat-content');
+            if (chatContent) {
+                chatContent.style.display = 'flex';
+            }
+
+            // Update active state in patient list and search results
+            document.querySelectorAll('.patient-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            if (sourceElement) {
+                sourceElement.classList.add('active');
+            } else {
+                const matchingItem = document.querySelector(`.patient-item[data-user-id="${patientUserId}"]`);
+                if (matchingItem) {
+                    matchingItem.classList.add('active');
+                }
+            }
+
+            // Load messages for this patient
+            await loadMessagesForPatient(patientUserId);
+        }
+
+        async function loadPatientDirectory() {
+            const feedback = document.getElementById('patientSearchFeedback');
+            patientDirectoryLoaded = false;
+            patientDirectoryLoading = true;
+
+            try {
+                const response = await fetch('/Dashboard/GetPatientDirectory');
+
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+
+                const result = await response.json();
+
+                if (result.success && Array.isArray(result.data)) {
+                    patientDirectory = result.data.map(student => {
+                        const userId = student.UserId ?? student.userId ?? 0;
+                        const idNumberValue = (student.idNumber ?? student.Idnumber ?? '').toString();
+                        const fullName = (student.fullName ?? `${student.FirstName ?? ''} ${student.LastName ?? ''}` ?? '').trim();
+
+                        return {
+                            userId,
+                            idNumber: idNumberValue.trim(),
+                            fullName: fullName || 'Unnamed patient'
+                        };
+                    }).filter(entry => entry.userId && entry.idNumber);
+
+                    patientDirectoryLoaded = true;
+
+                    if (feedback) {
+                        feedback.textContent = patientDirectory.length
+                            ? 'Type a patient ID number to quickly open a chat'
+                            : 'No patient IDs found yet. Add a patient first.';
+                    }
+                } else {
+                    throw new Error(result.error || 'Unexpected response');
+                }
+            } catch (error) {
+                console.error('Error loading patient directory:', error);
+                if (feedback) {
+                    feedback.textContent = 'Unable to load patient directory. Refresh and try again.';
+                }
+            } finally {
+                patientDirectoryLoading = false;
+            }
+        }
+
+        function setupPatientSearchHandlers() {
+            const searchInput = document.getElementById('patientSearchInput');
+            const searchButton = document.getElementById('patientSearchButton');
+
+            if (!searchInput || !searchButton) {
+                return;
+            }
+
+            searchButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                handlePatientSearch();
+            });
+
+            searchInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handlePatientSearch();
+                }
+            });
+
+            searchInput.addEventListener('input', () => {
+                if (!searchInput.value.trim()) {
+                    clearPatientSearchResults(true);
+                }
+            });
+        }
+
+        function handlePatientSearch() {
+            const searchInput = document.getElementById('patientSearchInput');
+            const feedback = document.getElementById('patientSearchFeedback');
+            const query = searchInput ? searchInput.value.trim() : '';
+
+            if (!searchInput || !feedback) {
+                return;
+            }
+
+            if (!patientDirectoryLoaded) {
+                if (!patientDirectoryLoading) {
+                    loadPatientDirectory();
+                }
+                feedback.textContent = 'Loading patient directory. Please try again in a moment.';
+                return;
+            }
+
+            if (!query) {
+                feedback.textContent = 'Enter a patient ID number to search.';
+                clearPatientSearchResults(true);
+                return;
+            }
+
+            const digitsOnly = query.replace(/\D/g, '');
+
+            if (!digitsOnly) {
+                feedback.textContent = 'Patient ID numbers are numeric. Please remove any letters.';
+                clearPatientSearchResults(true);
+                return;
+            }
+
+            const matches = patientDirectory.filter(patient => patient.idNumber.includes(digitsOnly));
+
+            if (matches.length === 0) {
+                feedback.textContent = `No patient found with ID containing ${digitsOnly}.`;
+                renderPatientSearchResults([]);
+                return;
+            }
+
+            feedback.textContent = matches.length === 1
+                ? 'Found 1 patient. Select them to start chatting.'
+                : `Found ${matches.length} patients. Select one to start chatting.`;
+
+            renderPatientSearchResults(matches.slice(0, 5));
+        }
+
+        function renderPatientSearchResults(matches) {
+            const resultsContainer = document.getElementById('patientSearchResults');
+
+            if (!resultsContainer) {
+                return;
+            }
+
+            if (!matches.length) {
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-search mb-2"></i>
+                        <p>No patient found for that ID number.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsContainer.innerHTML = matches.map((patient, index) => {
+                const safeName = escapeHtml(patient.fullName);
+                const safeId = escapeHtml(patient.idNumber || 'N/A');
+
+                return `
+                    <div class="patient-item search-result" data-result-index="${index}">
+                        <div class="patient-info">
+                            <div class="patient-avatar">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="patient-details">
+                                <div class="patient-name">ID: ${safeId}</div>
+                                <div class="last-message">${safeName}</div>
+                            </div>
+                        </div>
+                        <button type="button"
+                                class="start-chat-btn"
+                                data-result-index="${index}">
+                            Start chat
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            resultsContainer.querySelectorAll('.start-chat-btn').forEach(button => {
+                const index = parseInt(button.dataset.resultIndex, 10);
+                const patient = matches[index];
+
+                if (!patient) {
+                    return;
+                }
+
+                button.addEventListener('click', () => {
+                    selectPatient(
+                        patient.userId,
+                        patient.fullName,
+                        patient.idNumber,
+                        button.closest('.patient-item')
+                    );
+                });
+            });
+        }
+
+        function clearPatientSearchResults(resetFeedback = false) {
+            const resultsContainer = document.getElementById('patientSearchResults');
+            const feedback = document.getElementById('patientSearchFeedback');
+
+            if (resultsContainer) {
+                resultsContainer.innerHTML = '';
+            }
+
+            if (resetFeedback && feedback) {
+                feedback.textContent = 'Type a patient ID number to quickly open a chat';
+            }
+        }
+
+        // Load messages for a specific patient
+        async function loadMessagesForPatient(patientUserId) {
+            try {
+                const response = await fetch('/Dashboard/GetMessages');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    // Filter messages for the selected patient
+                    const patientMessages = result.data.filter(m => 
+                        m.senderId === patientUserId || m.receiverId === patientUserId
+                    );
+                    displayStaffMessages(patientMessages);
+                } else {
+                    console.error('Failed to load messages:', result.error);
+                }
+            } catch (error) {
+                console.error('Error loading messages:', error);
+            }
+        }
+
+        // Display messages in staff chat area
+        function displayStaffMessages(messages) {
+            const chatMessagesStaff = document.getElementById('chatMessagesStaff');
+            
+            if (messages.length === 0) {
+                chatMessagesStaff.innerHTML = `
+                    <div class="no-messages">
+                        <p>No messages yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            chatMessagesStaff.innerHTML = messages.map(msg => {
+                const messageClass = msg.isSent ? 'sent' : 'received';
+                const messageTime = formatMessageTime(msg.createdAt);
+                // Show sender full name for messages sent by clinic staff (when senderFullName exists)
+                const senderFullName = msg.senderFullName 
+                    ? `<div class="message-sender-name">${escapeHtml(msg.senderFullName)}</div>` 
+                    : '';
+                
+                return `
+                    <div class="message-staff ${messageClass}" data-message-id="${msg.messageId}">
+                        ${senderFullName}
+                        <div class="message-content">${escapeHtml(msg.message)}</div>
+                        <div class="message-time">${messageTime}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Scroll to bottom
+            chatMessagesStaff.scrollTop = chatMessagesStaff.scrollHeight;
+        }
+
+        // Add a single message to the staff chat (for real-time updates)
+        function addMessageToStaffChat(message) {
+            const chatMessagesStaff = document.getElementById('chatMessagesStaff');
+            if (!chatMessagesStaff) return;
+
+            // Check if message already exists (prevent duplicates)
+            const existingMessage = chatMessagesStaff.querySelector(`[data-message-id="${message.messageId}"]`);
+            if (existingMessage) {
+                return;
+            }
+
+            const messageClass = message.isSent ? 'sent' : 'received';
+            const messageTime = formatMessageTime(message.createdAt);
+            // Show sender full name for messages sent by clinic staff (when senderFullName exists)
+            const senderFullName = message.senderFullName 
+                ? `<div class="message-sender-name">${escapeHtml(message.senderFullName)}</div>` 
+                : '';
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = `message-staff ${messageClass}`;
+            messageElement.setAttribute('data-message-id', message.messageId);
+            messageElement.innerHTML = `
+                ${senderFullName}
+                <div class="message-content">${escapeHtml(message.message)}</div>
+                <div class="message-time">${messageTime}</div>
+            `;
+
+            chatMessagesStaff.appendChild(messageElement);
+            
+            // Scroll to bottom
+            chatMessagesStaff.scrollTop = chatMessagesStaff.scrollHeight;
+        }
+
+        // Send reply to patient
+        async function sendReplyToPatient() {
+            if (!selectedPatientUserId) {
+                alert('Please select a patient first');
+                return;
+            }
+
+            const replyInput = document.getElementById('replyInput');
+            const messageText = replyInput.value.trim();
+
+            if (!messageText) {
+                return;
+            }
+
+            // Disable send button
+            const sendButton = document.getElementById('sendReply');
+            sendButton.disabled = true;
+            sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            try {
+                const response = await fetch('/Dashboard/SendMessage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ 
+                        receiverId: selectedPatientUserId, 
+                        message: messageText 
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Clear input
+                    replyInput.value = '';
+
+                    // Message will be added via SignalR, but we can also add it immediately for better UX
+                    if (result.data) {
+                        addMessageToStaffChat(result.data);
+                    }
+
+                    // Reload patient list to update last message
+                    await loadPatientMessages();
+                } else {
+                    alert('Failed to send message: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                alert('Error sending message. Please try again.');
+            } finally {
+                sendButton.disabled = false;
+                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            }
+        }
+
+        // Format message timestamp
+        function formatMessageTime(timestamp) {
+            // Ensure timestamp is treated as UTC if it doesn't have timezone info
+            let date;
+            if (typeof timestamp === 'string') {
+                // If timestamp doesn't end with Z or have timezone, assume it's UTC
+                if (!timestamp.endsWith('Z') && !timestamp.includes('+') && !timestamp.includes('-', 10)) {
+                    // Add Z to indicate UTC if not present
+                    date = new Date(timestamp + (timestamp.includes('T') ? 'Z' : ''));
+                } else {
+                    date = new Date(timestamp);
+                }
+            } else {
+                date = new Date(timestamp);
+            }
+            
+            const now = new Date();
+            const diffMs = now.getTime() - date.getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            // Handle negative differences (future dates) or very small differences
+            if (diffMs < 0 || diffMins < 1) {
+                return 'Just now';
+            } else if (diffMins < 60) {
+                return `${diffMins} min ago`;
+            } else if (diffHours < 24) {
+                return `${diffHours} hr ago`;
+            } else if (diffDays < 7) {
+                return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+            } else {
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Fallback: Start auto-refresh for messages (only used if SignalR fails)
+        function startMessagingAutoRefresh() {
+            console.log('Using polling fallback for messages');
+            if (messagesInterval) {
+                clearInterval(messagesInterval);
+            }
+
+            messagesInterval = setInterval(function() {
+                loadPatientMessages();
+                if (selectedPatientUserId) {
+                    loadMessagesForPatient(selectedPatientUserId);
+                }
+            }, 10000); // Refresh every 10 seconds
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (connection) {
+                connection.stop();
+            }
+        });
+
+        // ===== WALK-IN MODAL FUNCTIONALITY =====
+        function openWalkInModal() {
+            const modal = document.getElementById('walkInModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                // Set today's date as default
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('appointmentDate').value = today;
+                // Set current time as default (rounded to nearest 15 minutes)
+                const now = new Date();
+                const minutes = Math.round(now.getMinutes() / 15) * 15;
+                now.setMinutes(minutes);
+                const timeString = now.toTimeString().slice(0, 5);
+                document.getElementById('appointmentTime').value = timeString;
+                // Clear form
+                document.getElementById('walkInForm').reset();
+                document.getElementById('appointmentDate').value = today;
+                document.getElementById('appointmentTime').value = timeString;
+                // Reset name field to editable
+                const nameField = document.getElementById('studentFullName');
+                if (nameField) {
+                    nameField.readOnly = true;
+                    nameField.value = '';
+                }
+                // Hide error alert
+                document.getElementById('walkInErrorAlert').style.display = 'none';
+                // Clear validation errors
+                document.querySelectorAll('.invalid-feedback').forEach(el => {
+                    el.textContent = '';
+                });
+                document.querySelectorAll('.form-control.is-invalid').forEach(el => {
+                    el.classList.remove('is-invalid');
+                });
+            }
+        }
+
+        function closeWalkInModal() {
+            const modal = document.getElementById('walkInModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('walkInModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeWalkInModal();
+                    }
+                });
+            }
+
+            // Handle ID number change for walk-in form
+            const studentIdNumberField = document.getElementById('studentIdNumber');
+            const studentFullNameField = document.getElementById('studentFullName');
+            
+            if (studentIdNumberField && studentFullNameField) {
+                let lookupTimeout;
+                
+                studentIdNumberField.addEventListener('input', function() {
+                    const idNumber = this.value.trim();
+                    
+                    // Clear previous timeout
+                    clearTimeout(lookupTimeout);
+                    
+                    // Clear name field and make it readonly
+                    studentFullNameField.value = '';
+                    studentFullNameField.readOnly = true;
+                    
+                    // Clear any previous errors
+                    studentIdNumberField.classList.remove('is-invalid');
+                    studentFullNameField.classList.remove('is-invalid');
+                    const idFeedback = studentIdNumberField.parentElement.querySelector('.invalid-feedback');
+                    const nameFeedback = studentFullNameField.parentElement.querySelector('.invalid-feedback');
+                    if (idFeedback) idFeedback.textContent = '';
+                    if (nameFeedback) nameFeedback.textContent = '';
+                    
+                    // If ID number is empty, keep name field readonly but empty
+                    if (!idNumber) {
+                        return;
+                    }
+                    
+                    // Validate ID number format (should be numeric)
+                    if (!/^\d+$/.test(idNumber)) {
+                        showFieldError('studentIdNumber', 'ID Number must contain only numbers');
+                        return;
+                    }
+                    
+                    // Debounce the lookup - wait 500ms after user stops typing
+                    lookupTimeout = setTimeout(async () => {
+                        try {
+                            // Show loading state
+                            studentFullNameField.value = 'Loading...';
+                            studentFullNameField.readOnly = true;
+                            
+                            const response = await fetch(`/Dashboard/GetStudentByIdNumber?idNumber=${encodeURIComponent(idNumber)}`, {
+                                method: 'GET',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success && result.data) {
+                                // Populate name field and keep it readonly
+                                studentFullNameField.value = result.data.fullName;
+                                studentFullNameField.readOnly = true;
+                                
+                                // Clear any errors
+                                studentIdNumberField.classList.remove('is-invalid');
+                                studentFullNameField.classList.remove('is-invalid');
+                                if (idFeedback) idFeedback.textContent = '';
+                                if (nameFeedback) nameFeedback.textContent = '';
+                            } else {
+                                // Student not found
+                                studentFullNameField.value = '';
+                                studentFullNameField.readOnly = true;
+                                showFieldError('studentIdNumber', result.error || 'Student not found');
+                            }
+                        } catch (error) {
+                            console.error('Error fetching student:', error);
+                            studentFullNameField.value = '';
+                            studentFullNameField.readOnly = true;
+                            showFieldError('studentIdNumber', 'Error fetching student information. Please try again.');
+                        }
+                    }, 500);
+                });
+            }
+        });
+
+        async function submitWalkInForm(event) {
+            event.preventDefault();
+            
+            const form = document.getElementById('walkInForm');
+            const submitBtn = document.getElementById('submitWalkInBtn');
+            const errorAlert = document.getElementById('walkInErrorAlert');
+            
+            // Clear previous errors
+            errorAlert.style.display = 'none';
+            errorAlert.textContent = '';
+            document.querySelectorAll('.invalid-feedback').forEach(el => {
+                el.textContent = '';
+            });
+            document.querySelectorAll('.form-control.is-invalid').forEach(el => {
+                el.classList.remove('is-invalid');
+            });
+
+            // Validate required fields
+            const studentFullName = document.getElementById('studentFullName').value.trim();
+            const studentIdNumber = document.getElementById('studentIdNumber').value.trim();
+            const appointmentDate = document.getElementById('appointmentDate').value;
+            const appointmentTime = document.getElementById('appointmentTime').value;
+            const reasonForVisit = document.getElementById('reasonForVisit').value.trim();
+            const priorityLevel = document.getElementById('priorityLevel').value;
+
+            let hasErrors = false;
+
+            if (!studentFullName) {
+                showFieldError('studentFullName', 'Student Full Name is required');
+                hasErrors = true;
+            }
+
+            if (!studentIdNumber) {
+                showFieldError('studentIdNumber', 'Student ID Number is required');
+                hasErrors = true;
+            }
+
+            if (!appointmentDate) {
+                showFieldError('appointmentDate', 'Appointment Date is required');
+                hasErrors = true;
+            }
+
+            if (!appointmentTime) {
+                showFieldError('appointmentTime', 'Appointment Time is required');
+                hasErrors = true;
+            }
+
+            if (!reasonForVisit) {
+                showFieldError('reasonForVisit', 'Reason for Visit is required');
+                hasErrors = true;
+            }
+
+            if (!priorityLevel) {
+                showFieldError('priorityLevel', 'Priority Level is required');
+                hasErrors = true;
+            }
+
+            if (hasErrors) {
+                return;
+            }
+
+            // Disable submit button
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            try {
+                const response = await fetch('/Dashboard/CreateWalkInAppointment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        studentFullName: studentFullName,
+                        studentIdNumber: studentIdNumber,
+                        appointmentDate: appointmentDate,
+                        appointmentTime: appointmentTime,
+                        reasonForVisit: reasonForVisit,
+                        priorityLevel: priorityLevel
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Show success message
+                    showMessage('Appointment successfully added.', 'success');
+                    
+                    // Close modal
+                    closeWalkInModal();
+                    
+                    // Refresh dashboard data
+                    setTimeout(() => {
+                        refreshDashboardData();
+                    }, 500);
+                } else {
+                    // Show error message
+                    if (result.error) {
+                        errorAlert.textContent = result.error;
+                        errorAlert.style.display = 'block';
+                    } else if (result.errors) {
+                        // Show field-specific errors
+                        Object.keys(result.errors).forEach(field => {
+                            const errorMessages = result.errors[field];
+                            if (errorMessages && errorMessages.length > 0) {
+                                showFieldError(field, errorMessages[0]);
+                            }
+                        });
+                    } else {
+                        errorAlert.textContent = result.message || 'Failed to create appointment. Please try again.';
+                        errorAlert.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error submitting walk-in form:', error);
+                errorAlert.textContent = 'An error occurred while creating the appointment. Please try again.';
+                errorAlert.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add to Queue';
+            }
+        }
+
+        function showFieldError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.classList.add('is-invalid');
+                const feedback = field.parentElement.querySelector('.invalid-feedback');
+                if (feedback) {
+                    feedback.textContent = message;
+                }
+            }
+        }
+
+    </script>
+}

@@ -1,0 +1,639 @@
+@model IEnumerable<QuickClinique.Models.Appointment>
+@{
+    ViewData["Title"] = "Queue Management";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/appoQ.css" />
+   
+}
+
+<div class="queue-management">
+    <div class="content-card">
+        <div class="queue-header">
+            <h2><i class="fas fa-users"></i> Queue Management</h2>
+            <div class="auto-refresh">
+                <div class="auto-refresh-toggle">
+                    <label class="switch">
+                        <input type="checkbox" id="autoRefreshToggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span>Auto-refresh</span>
+                </div>
+                <button class="btn btn-primary" onclick="refreshQueue()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Queue Statistics -->
+        <div class="queue-stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalWaiting">@Model.Count(a => a.AppointmentStatus == "Confirmed" && a.QueueStatus == "Waiting")</div>
+                <div class="stat-label">Waiting</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="inProgress">@Model.Count(a => a.AppointmentStatus == "In Progress")</div>
+                <div class="stat-label">In Progress</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completedToday">@Model.Count(a => a.AppointmentStatus == "Completed")</div>
+                <div class="stat-label">Completed Today</div>
+            </div>
+            
+        </div>
+
+        <!-- Current Patient -->
+        @{
+            var currentPatient = Model.FirstOrDefault(a => a.AppointmentStatus == "In Progress");
+        }
+
+        @if (currentPatient != null)
+        {
+            var hasWaitingPatients = Model.Any(a => a.AppointmentStatus == "Confirmed" && a.QueueStatus == "Waiting");
+            
+            <div class="current-patient">
+                <h3><i class="fas fa-user-md"></i> Currently Serving</h3>
+                <div class="patient-name"><i class="fas fa-user"></i> @currentPatient.Patient?.FullName</div>
+                <div class="queue-number">🎫 Queue #@currentPatient.QueueNumber</div>
+                <div class="queue-controls">
+                    @if (hasWaitingPatients)
+                    {
+                        <button class="btn btn-primary btn-large" onclick="showNextPatientModal()">
+                            <i class="fas fa-forward"></i> Next Patient
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-success btn-large" onclick="completeCurrentAppointment(@currentPatient.AppointmentId, @currentPatient.PatientId)">
+                            <i class="fas fa-check-circle"></i> Complete Appointment
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="current-patient">
+                <h3><i class="fas fa-user-md"></i> No Patient Currently Being Served</h3>
+                <div class="queue-controls">
+                    <button class="btn btn-primary btn-large" onclick="showNextPatientModal()">
+                        <i class="fas fa-play"></i> Start Next Patient
+                    </button>
+                </div>
+            </div>
+        }
+
+        <!-- Waiting Queue -->
+        <div class="waiting-queue">
+            <h4><i class="fas fa-clock"></i> Waiting Queue</h4>
+
+            @{
+                var waitingPatients = Model.Where(a => a.AppointmentStatus == "Confirmed" && 
+                                                       a.QueueStatus == "Waiting" && 
+                                                       a.QueueNumber > 0) // Only show appointments with queue numbers
+                .OrderBy(a => a.QueueNumber)
+                .ToList();
+            }
+
+            @if (waitingPatients.Any())
+            {
+                @foreach (var patient in waitingPatients)
+                {
+                    <div class="queue-item">
+                        <div class="queue-info">
+                            <div class="queue-number-badge">#@patient.QueueNumber</div>
+                            <div class="patient-details">
+                                <h5>@patient.Patient?.FullName</h5>
+                                <p><i class="fas fa-clock"></i> @patient.Schedule?.StartTime.ToString("h:mm tt") - @patient.Schedule?.EndTime.ToString("h:mm tt")</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="no-patients">
+                    <i class="fas fa-user-friends"></i>
+                    <h5>No patients waiting in queue</h5>
+                    <p>All appointments for today have been processed or no appointments are scheduled.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Next Patient Triage Modal -->
+<div class="modal fade" id="nextPatientModal" tabindex="-1" role="dialog" aria-labelledby="nextPatientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="nextPatientModalLabel">
+                    <i class="fas fa-user-check"></i> Next Patient - Clinical Triage
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="nextPatientForm">
+                    <!-- Patient Information Display -->
+                    <div class="patient-info-section mb-3 p-3 bg-light rounded">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="mb-2"><i class="fas fa-user"></i> Patient Information</h6>
+                                <p class="mb-1"><strong>Name:</strong> <span id="nextPatientName">Loading...</span></p>
+                                <p class="mb-1"><strong>Queue #:</strong> <span id="nextPatientQueueNumber">-</span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="mb-2"><i class="fas fa-calendar-check"></i> Appointment Details</h6>
+                                <p class="mb-1"><strong>Reason:</strong> <span id="nextPatientReason">-</span></p>
+                                <p class="mb-1"><strong>Time:</strong> <span id="nextPatientTime">-</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Clinical Triage:</strong> Record initial patient information before consultation.
+                    </div>
+
+                    <!-- Vital Signs Section -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-heartbeat"></i> Vital Signs</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="triagePulseRate">
+                                        <i class="fas fa-heart"></i> Pulse Rate (bpm)
+                                    </label>
+                                    <input type="number" class="form-control" id="triagePulseRate" name="pulseRate"
+                                           placeholder="e.g., 72" min="30" max="200" oninput="updatePulseRateIndicator()">
+                                    <div class="vital-result-modal vital-result-modal-hidden" id="pulseRateResultModal">
+                                        <div class="vital-result-value-modal" id="pulseRateValueModal">-</div>
+                                        <div class="vital-result-category-modal" id="pulseRateCategoryModal">Enter value</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-tachometer-alt"></i> Blood Pressure
+                                    </label>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="triageBPSystolic" class="visually-hidden">Systolic Blood Pressure</label>
+                                            <input type="number" class="form-control" id="triageBPSystolic" 
+                                                   placeholder="Systolic" min="70" max="250" oninput="updateBPIndicator()" aria-label="Systolic Blood Pressure">
+                                            <small class="form-text text-muted">Systolic</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="triageBPDiastolic" class="visually-hidden">Diastolic Blood Pressure</label>
+                                            <input type="number" class="form-control" id="triageBPDiastolic" 
+                                                   placeholder="Diastolic" min="40" max="150" oninput="updateBPIndicator()" aria-label="Diastolic Blood Pressure">
+                                            <small class="form-text text-muted">Diastolic</small>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="triageBloodPressure" name="bloodPressure">
+                                    <div class="vital-result-modal vital-result-modal-hidden" id="bpResultModal">
+                                        <div class="vital-result-value-modal" id="bpValueModal">-</div>
+                                        <div class="vital-result-category-modal" id="bpCategoryModal">Enter values</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="triageTemperature">
+                                        <i class="fas fa-thermometer-half"></i> Temperature (°C)
+                                    </label>
+                                    <input type="number" class="form-control" id="triageTemperature" name="temperature"
+                                           placeholder="e.g., 36.5" step="0.1" min="30" max="45" oninput="updateTemperatureIndicator()">
+                                    <div class="vital-result-modal vital-result-modal-hidden" id="temperatureResultModal">
+                                        <div class="vital-result-value-modal" id="temperatureValueModal">-</div>
+                                        <div class="vital-result-category-modal" id="temperatureCategoryModal">Enter value</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="triageOxygenSaturation">
+                                        <i class="fas fa-wind"></i> Oxygen Saturation (%)
+                                    </label>
+                                    <input type="number" class="form-control" id="triageOxygenSaturation" name="oxygenSaturation"
+                                           placeholder="e.g., 98" min="70" max="100" oninput="updateOxygenSaturationIndicator()">
+                                    <div class="vital-result-modal vital-result-modal-hidden" id="oxygenSaturationResultModal">
+                                        <div class="vital-result-value-modal" id="oxygenSaturationValueModal">-</div>
+                                        <div class="vital-result-category-modal" id="oxygenSaturationCategoryModal">Enter value</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>
+                                        <i class="fas fa-user"></i> BMI
+                                    </label>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="triageHeight" class="visually-hidden">Height in centimeters</label>
+                                            <div class="input-group-icon-wrapper">
+                                                <i class="fas fa-ruler-vertical input-icon"></i>
+                                                <input type="number" class="form-control form-control-icon" id="triageHeight" 
+                                                       placeholder="Height" min="100" max="250" oninput="updateBMIIndicator()" aria-label="Height in centimeters">
+                                            </div>
+                                            <small class="form-text text-muted">Height (cm)</small>
+                                        </div>
+                                        <div class="col-6">
+                                            <label for="triageWeight" class="visually-hidden">Weight in kilograms</label>
+                                            <div class="input-group-icon-wrapper">
+                                                <i class="fas fa-weight input-icon"></i>
+                                                <input type="number" class="form-control form-control-icon" id="triageWeight" 
+                                                       placeholder="Weight" min="30" max="200" oninput="updateBMIIndicator()" aria-label="Weight in kilograms">
+                                            </div>
+                                            <small class="form-text text-muted">Weight (kg)</small>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="triageBMI" name="bmi" aria-label="Calculated BMI">
+                                    <div class="vital-result-modal vital-result-modal-hidden" id="bmiVitalResultModal">
+                                        <div class="vital-result-value-modal" id="bmiVitalValueModal">-</div>
+                                        <div class="vital-result-category-modal" id="bmiVitalCategoryModal">Enter height & weight</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="triageAllergies">
+                                <i class="fas fa-exclamation-triangle"></i> Known Allergies
+                            </label>
+                            <input type="text" class="form-control" id="triageAllergies" name="allergies"
+                                   placeholder="List any known allergies (e.g., Penicillin, Peanuts)">
+                        </div>
+                    </div>
+
+                    <!-- Initial Observations -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-notes-medical"></i> Initial Observations</h6>
+                        <div class="form-group">
+                            <label for="triageNotes">Triage Notes (Optional)</label>
+                            <textarea class="form-control" id="triageNotes" name="triageNotes" rows="3"
+                                      placeholder="Record any initial observations or vital signs..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="submitNextPatient()">
+                    <i class="fas fa-forward"></i> Start Next Patient
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Complete Appointment Modal (Full) -->
+<div class="modal fade" id="completeAppointmentModal" tabindex="-1" role="dialog" aria-labelledby="completeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="completeModalLabel">
+                    <i class="fas fa-check-circle"></i> Complete Appointment & Create Medical Record
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="completeAppointmentForm">
+                    <input type="hidden" id="completeAppointmentId" name="appointmentId">
+                    <input type="hidden" id="completePatientId" name="patientId">
+
+                    <div class="alert alert-info alert-custom">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Important:</strong> Completing this appointment will automatically create a medical record for the patient with the information provided below.
+                        </div>
+                    </div>
+
+                    <!-- Diagnosis Section -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-stethoscope"></i> Diagnosis</h6>
+                        <div class="form-group">
+                            <label for="diagnosis">
+                                Primary Diagnosis <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3" required
+                                      placeholder="Enter the primary diagnosis and findings..."></textarea>
+                            <small class="form-text text-muted">Provide a detailed description of the patient's condition</small>
+                        </div>
+                    </div>
+
+                    <!-- Treatment Section -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-pills"></i> Treatment & Medications</h6>
+                        <div class="form-group">
+                            <label for="medications">
+                                Medications Prescribed <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="medications" name="medications" rows="3" required
+                                      placeholder="List all medications with dosage and frequency..."></textarea>
+                            <small class="form-text text-muted">Example: Amoxicillin 500mg, 3 times daily for 7 days</small>
+                        </div>
+                    </div>
+
+                    <!-- Treatment Provider Information Section -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-user-md"></i> Treatment Provider Information</h6>
+                        <div class="form-group">
+                            <label for="treatmentProvidedByName">
+                                Provider Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="treatmentProvidedByName" name="treatmentProvidedByName" 
+                                   placeholder="Enter the name of the doctor providing treatment" required />
+                            <small class="form-text text-muted">Name of the healthcare provider completing this appointment</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="doctorLicenseNumber">
+                                License Number <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="doctorLicenseNumber" name="doctorLicenseNumber" 
+                                   placeholder="Enter the license number" required />
+                            <small class="form-text text-muted">Medical license number of the provider</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-success" onclick="submitCompleteAppointment()">
+                    <i class="fas fa-check-circle"></i> Complete & Save Record
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    <script src="~/js/appoQ.js"></script>
+    @Html.AntiForgeryToken()
+    <script>
+        // BMI Indicator (similar to Blood Pressure)
+        function updateBMIIndicator() {
+            const height = parseFloat(document.getElementById('triageHeight')?.value);
+            const weight = parseFloat(document.getElementById('triageWeight')?.value);
+            const bmiInput = document.getElementById('triageBMI');
+            const resultModal = document.getElementById('bmiVitalResultModal');
+            const valueModal = document.getElementById('bmiVitalValueModal');
+            const categoryModal = document.getElementById('bmiVitalCategoryModal');
+
+            // Update hidden field
+            if (bmiInput && height && weight) {
+                const heightInMeters = height / 100;
+                const bmi = weight / (heightInMeters * heightInMeters);
+                const roundedBMI = Math.round(bmi * 10) / 10;
+                bmiInput.value = roundedBMI;
+            }
+
+            if (!height || !weight || height < 100 || height > 250 || weight < 30 || weight > 200) {
+                if (resultModal) resultModal.classList.add('vital-result-modal-hidden');
+                return;
+            }
+            
+            // Remove hidden class to show the modal
+            if (resultModal) resultModal.classList.remove('vital-result-modal-hidden');
+
+            // Calculate BMI: weight (kg) / (height (m))^2
+            const heightInMeters = height / 100;
+            const bmi = weight / (heightInMeters * heightInMeters);
+            const roundedBMI = Math.round(bmi * 10) / 10;
+
+            let category = '';
+            let categoryClass = '';
+            let emoji = '';
+
+            if (bmi < 18.5) {
+                category = 'Underweight';
+                categoryClass = 'warning';
+                emoji = '⚠️';
+            } else if (bmi < 25) {
+                category = 'Normal';
+                categoryClass = 'normal';
+                emoji = '✅';
+            } else if (bmi < 30) {
+                category = 'Overweight';
+                categoryClass = 'warning';
+                emoji = '⚠️';
+            } else {
+                category = 'Obese';
+                categoryClass = 'abnormal';
+                emoji = '⚠️';
+            }
+
+            if (valueModal) valueModal.textContent = roundedBMI;
+            if (categoryModal) {
+                categoryModal.textContent = emoji + ' ' + category;
+                categoryModal.className = 'vital-result-category-modal ' + categoryClass;
+            }
+        }
+
+        // Pulse Rate Indicator
+        function updatePulseRateIndicator() {
+            const pulseRate = parseInt(document.getElementById('triagePulseRate')?.value);
+            const resultModal = document.getElementById('pulseRateResultModal');
+            const valueModal = document.getElementById('pulseRateValueModal');
+            const categoryModal = document.getElementById('pulseRateCategoryModal');
+
+            if (!pulseRate || pulseRate < 30 || pulseRate > 200) {
+                if (resultModal) resultModal.classList.add('vital-result-modal-hidden');
+                return;
+            }
+            
+            // Remove hidden class to show the modal
+            if (resultModal) resultModal.classList.remove('vital-result-modal-hidden');
+
+            let category = '';
+            let categoryClass = '';
+            let emoji = '';
+
+            if (pulseRate < 60) {
+                category = 'Bradycardia';
+                categoryClass = 'abnormal';
+                emoji = '⚠️';
+            } else if (pulseRate <= 100) {
+                category = 'Normal';
+                categoryClass = 'normal';
+                emoji = '✅';
+            } else {
+                category = 'Tachycardia';
+                categoryClass = 'abnormal';
+                emoji = '⚠️';
+            }
+
+            if (valueModal) valueModal.textContent = pulseRate + ' bpm';
+            if (categoryModal) {
+                categoryModal.textContent = emoji + ' ' + category;
+                categoryModal.className = 'vital-result-category-modal ' + categoryClass;
+            }
+        }
+
+        // Blood Pressure Indicator
+        function updateBPIndicator() {
+            const systolic = parseInt(document.getElementById('triageBPSystolic')?.value);
+            const diastolic = parseInt(document.getElementById('triageBPDiastolic')?.value);
+            const bpInput = document.getElementById('triageBloodPressure');
+            const resultModal = document.getElementById('bpResultModal');
+            const valueModal = document.getElementById('bpValueModal');
+            const categoryModal = document.getElementById('bpCategoryModal');
+
+            // Update hidden field
+            if (bpInput && systolic && diastolic) {
+                bpInput.value = systolic + '/' + diastolic;
+            }
+
+            if (!systolic || !diastolic || systolic < 70 || systolic > 250 || diastolic < 40 || diastolic > 150) {
+                if (resultModal) resultModal.classList.add('vital-result-modal-hidden');
+                return;
+            }
+            
+            // Remove hidden class to show the modal
+            if (resultModal) resultModal.classList.remove('vital-result-modal-hidden');
+
+            let category = '';
+            let categoryClass = '';
+            let emoji = '';
+
+            if (systolic < 120 && diastolic < 80) {
+                category = 'Normal';
+                categoryClass = 'normal';
+                emoji = '✅';
+            } else if (systolic < 130 && diastolic < 80) {
+                category = 'Elevated';
+                categoryClass = 'warning';
+                emoji = '⚠️';
+            } else if (systolic < 140 || diastolic < 90) {
+                category = 'High Stage 1';
+                categoryClass = 'abnormal';
+                emoji = '⚠️';
+            } else if (systolic < 180 || diastolic < 120) {
+                category = 'High Stage 2';
+                categoryClass = 'abnormal';
+                emoji = '🔴';
+            } else {
+                category = 'Hypertensive Crisis';
+                categoryClass = 'critical';
+                emoji = '🔴';
+            }
+
+            if (valueModal) valueModal.textContent = systolic + '/' + diastolic;
+            if (categoryModal) {
+                categoryModal.textContent = emoji + ' ' + category;
+                categoryModal.className = 'vital-result-category-modal ' + categoryClass;
+            }
+        }
+
+        // Temperature Indicator
+        function updateTemperatureIndicator() {
+            const temperature = parseFloat(document.getElementById('triageTemperature')?.value);
+            const resultModal = document.getElementById('temperatureResultModal');
+            const valueModal = document.getElementById('temperatureValueModal');
+            const categoryModal = document.getElementById('temperatureCategoryModal');
+
+            if (!temperature || temperature < 30 || temperature > 45) {
+                if (resultModal) resultModal.classList.add('vital-result-modal-hidden');
+                return;
+            }
+            
+            // Remove hidden class to show the modal
+            if (resultModal) resultModal.classList.remove('vital-result-modal-hidden');
+
+            let category = '';
+            let categoryClass = '';
+            let emoji = '';
+
+            if (temperature < 35) {
+                category = 'Hypothermia';
+                categoryClass = 'critical';
+                emoji = '🔴';
+            } else if (temperature < 36.1) {
+                category = 'Low';
+                categoryClass = 'warning';
+                emoji = '⚠️';
+            } else if (temperature <= 37.2) {
+                category = 'Normal';
+                categoryClass = 'normal';
+                emoji = '✅';
+            } else if (temperature <= 38.3) {
+                category = 'Low-grade Fever';
+                categoryClass = 'warning';
+                emoji = '⚠️';
+            } else if (temperature <= 39.4) {
+                category = 'Fever';
+                categoryClass = 'abnormal';
+                emoji = '🔴';
+            } else {
+                category = 'High Fever';
+                categoryClass = 'critical';
+                emoji = '🔴';
+            }
+
+            if (valueModal) valueModal.textContent = temperature.toFixed(1) + '°C';
+            if (categoryModal) {
+                categoryModal.textContent = emoji + ' ' + category;
+                categoryModal.className = 'vital-result-category-modal ' + categoryClass;
+            }
+        }
+
+        // Oxygen Saturation Indicator
+        function updateOxygenSaturationIndicator() {
+            const oxygenSat = parseInt(document.getElementById('triageOxygenSaturation')?.value);
+            const resultModal = document.getElementById('oxygenSaturationResultModal');
+            const valueModal = document.getElementById('oxygenSaturationValueModal');
+            const categoryModal = document.getElementById('oxygenSaturationCategoryModal');
+
+            if (!oxygenSat || oxygenSat < 70 || oxygenSat > 100) {
+                if (resultModal) resultModal.classList.add('vital-result-modal-hidden');
+                return;
+            }
+            
+            // Remove hidden class to show the modal
+            if (resultModal) resultModal.classList.remove('vital-result-modal-hidden');
+
+            let category = '';
+            let categoryClass = '';
+            let emoji = '';
+
+            if (oxygenSat >= 95) {
+                category = 'Normal';
+                categoryClass = 'normal';
+                emoji = '✅';
+            } else if (oxygenSat >= 90) {
+                category = 'Mild Hypoxemia';
+                categoryClass = 'warning';
+                emoji = '⚠️';
+            } else if (oxygenSat >= 85) {
+                category = 'Moderate Hypoxemia';
+                categoryClass = 'abnormal';
+                emoji = '🔴';
+            } else {
+                category = 'Severe Hypoxemia';
+                categoryClass = 'critical';
+                emoji = '🔴';
+            }
+
+            if (valueModal) valueModal.textContent = oxygenSat + '%';
+            if (categoryModal) {
+                categoryModal.textContent = emoji + ' ' + category;
+                categoryModal.className = 'vital-result-category-modal ' + categoryClass;
+            }
+        }
+
+    </script>
+}
+
+@await Html.PartialAsync("_EmergencyPolling")

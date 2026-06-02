@@ -1,0 +1,28 @@
+# Ignore Visual Studio temporary files, build results, and personal settings
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.dbmdl
+*.opendb
+*.vscode/
+*.userosscache
+*.userprefs
+_TestResults/
+*.nupkg
+*.snupkg
+
+# Sensitive configuration files
+appsettings.Production.json
+appsettings.Local.json
+appsettings.Development.json
+*.secrets.json
+
+# Google Cloud credentials
+google-credentials.json
+*-credentials.json
+*service-account*.json
+*vision*.json

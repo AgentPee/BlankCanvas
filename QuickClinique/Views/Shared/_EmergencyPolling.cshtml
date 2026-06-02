@@ -1,0 +1,1306 @@
+<!-- Emergency SOS Modal for Clinic Staff -->
+<div class="modal fade" id="emergencyModal" tabindex="-1" aria-labelledby="emergencyModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content emergency-modal-content">
+            <div class="modal-header emergency-header">
+                <h5 class="modal-title" id="emergencyModalLabel">
+                    <i class="fas fa-exclamation-triangle"></i> 🚨 EMERGENCY SOS ALERT 🚨
+                </h5>
+            </div>
+            <div class="modal-body emergency-body">
+                <div class="alert alert-danger emergency-alert">
+                    <div class="emergency-alert-content">
+                        <div class="emergency-alert-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="emergency-alert-text">
+                            <strong>URGENT:</strong> A student has sent an emergency SOS request!
+                        </div>
+                    </div>
+                </div>
+
+                <div class="emergency-info">
+                    <div class="info-row">
+                        <div class="info-label">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <span>Student Name</span>
+                        </div>
+                        <div class="info-value" id="emergencyStudentName"></div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-id-card"></i>
+                            </div>
+                            <span>Student ID</span>
+                        </div>
+                        <div class="info-value" id="emergencyStudentId"></div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-map-marker-alt"></i>
+                            </div>
+                            <span>Location</span>
+                        </div>
+                        <div class="info-value" id="emergencyLocation"></div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-tools"></i>
+                            </div>
+                            <span>Needs</span>
+                        </div>
+                        <div class="info-value" id="emergencyNeeds"></div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">
+                            <div class="info-icon-wrapper">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <span>Time</span>
+                        </div>
+                        <div class="info-value" id="emergencyTime"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer emergency-footer">
+                <button type="button" class="btn btn-success emergency-resolve-btn" id="resolveEmergencyBtn">
+                    <i class="fas fa-check"></i> Respond
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help Received Notification Modal for Clinic Staff -->
+<div class="modal fade" id="helpReceivedModal" tabindex="-1" aria-labelledby="helpReceivedModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content help-received-modal-content">
+            <div class="modal-header help-received-header">
+                <h5 class="modal-title" id="helpReceivedModalLabel">
+                    <i class="fas fa-check-circle"></i> Help Received Notification
+                </h5>
+            </div>
+            <div class="modal-body help-received-body">
+                <div class="help-received-message-container">
+                    <div class="help-received-icon-wrapper">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h3 class="help-received-title">Student Has Confirmed Help Received</h3>
+                    <p class="help-received-message">
+                        The student has confirmed that help has arrived and assistance has been received.
+                    </p>
+                    <div class="help-received-info">
+                        <div class="info-row">
+                            <div class="info-label">
+                                <div class="info-icon-wrapper">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <span>Student Name</span>
+                            </div>
+                            <div class="info-value" id="helpReceivedStudentName"></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">
+                                <div class="info-icon-wrapper">
+                                    <i class="fas fa-id-card"></i>
+                                </div>
+                                <span>Student ID</span>
+                            </div>
+                            <div class="info-value" id="helpReceivedStudentId"></div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">
+                                <div class="info-icon-wrapper">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <span>Location</span>
+                            </div>
+                            <div class="info-value" id="helpReceivedLocation"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer help-received-footer">
+                <button type="button" class="btn btn-success help-received-resolve-btn" id="resolveHelpReceivedBtn">
+                    <i class="fas fa-check"></i> Resolved
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ===== EMERGENCY SOS FUNCTIONALITY =====
+    (function() {
+        let currentEmergencyId = null;
+        let emergencyCheckInterval = null;
+        let lastCheckedEmergencyId = null;
+        let alertAudio = null;
+        let audioInterval = null;
+        let helpReceivedCheckInterval = null;
+        let lastCheckedHelpReceivedId = null;
+        let currentHelpReceivedId = null;
+
+        // Check for emergencies every 5 seconds
+        function startEmergencyCheck() {
+            if (emergencyCheckInterval) {
+                clearInterval(emergencyCheckInterval);
+            }
+
+            emergencyCheckInterval = setInterval(async () => {
+                await checkForEmergencies();
+            }, 5000); // Check every 5 seconds
+
+            // Check immediately on page load
+            checkForEmergencies();
+        }
+
+        // Check for active emergencies
+        async function checkForEmergencies() {
+            try {
+                const response = await fetch('/Dashboard/GetActiveEmergencies');
+                if (!response.ok) {
+                    console.error('Failed to fetch emergencies:', response.status);
+                    return;
+                }
+                
+                const result = await response.json();
+                console.log('Emergency check result:', result);
+
+                if (result.success && result.data && result.data.length > 0) {
+                    // Get the most recent emergency
+                    const latestEmergency = result.data[0];
+                    console.log('Latest emergency:', latestEmergency);
+                    
+                    // Convert to numbers for proper comparison
+                    const latestId = parseInt(latestEmergency.emergencyId);
+                    const lastCheckedId = lastCheckedEmergencyId ? parseInt(lastCheckedEmergencyId) : null;
+                    
+                    console.log('Comparing IDs - Latest:', latestId, 'Last Checked:', lastCheckedId, 'Current:', currentEmergencyId);
+                    
+                    // Show modal only if it's a new emergency (different ID) and modal is not currently showing
+                    // Also check if modal is actually visible to prevent spamming
+                    const modalElement = document.getElementById('emergencyModal');
+                    const isModalVisible = modalElement && modalElement.classList.contains('show');
+                    
+                    if ((latestId !== lastCheckedId || (currentEmergencyId === null && !isModalVisible)) && !isModalVisible) {
+                        console.log('Showing emergency modal for ID:', latestId);
+                        lastCheckedEmergencyId = latestId;
+                        currentEmergencyId = latestId;
+                        showEmergencyModal(latestEmergency);
+                    } else if (latestId === lastCheckedId && currentEmergencyId === latestId) {
+                        // Emergency already shown, just update currentEmergencyId if needed
+                        currentEmergencyId = latestId;
+                    }
+                } else {
+                    // No active emergencies - stop beeping and reset tracking
+                    if (lastCheckedEmergencyId !== null) {
+                        console.log('No active emergencies, resetting tracking');
+                        stopEmergencyBeep();
+                        lastCheckedEmergencyId = null;
+                        currentEmergencyId = null;
+                        
+                        // Close modal if it's open
+                        const modalElement = document.getElementById('emergencyModal');
+                        if (modalElement) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) {
+                                modal.hide();
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking for emergencies:', error);
+            }
+        }
+
+        // Show emergency modal
+        function showEmergencyModal(emergency) {
+            // Prevent showing duplicate modals
+            const modalElement = document.getElementById('emergencyModal');
+            if (!modalElement) {
+                console.error('Emergency modal element not found');
+                return;
+            }
+
+            // Check if modal is already visible
+            if (modalElement.classList.contains('show')) {
+                console.log('Modal already visible, skipping duplicate show');
+                return;
+            }
+
+            // Update modal content
+            document.getElementById('emergencyStudentName').textContent = emergency.studentName || 'Unknown';
+            document.getElementById('emergencyStudentId').textContent = emergency.studentIdNumber || 'N/A';
+            document.getElementById('emergencyLocation').textContent = emergency.location || 'Not specified';
+            document.getElementById('emergencyNeeds').textContent = emergency.needs || 'Not specified';
+            
+            const createdAt = emergency.createdAt ? new Date(emergency.createdAt) : new Date();
+            document.getElementById('emergencyTime').textContent = createdAt.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            // Ensure modal has highest z-index
+            modalElement.style.zIndex = '10000';
+            
+            let modal = bootstrap.Modal.getInstance(modalElement);
+            if (!modal) {
+                modal = new bootstrap.Modal(modalElement, {
+                    backdrop: 'static',
+                    keyboard: false
+                });
+            }
+
+            // Show modal with sound alert (if browser allows)
+            modal.show();
+
+            // Force z-index after showing (Bootstrap might override it)
+            setTimeout(() => {
+                modalElement.style.zIndex = '10000';
+                const backdrop = document.querySelector('.modal-backdrop.show');
+                if (backdrop) {
+                    backdrop.style.zIndex = '9999';
+                }
+                const modalDialog = modalElement.querySelector('.modal-dialog');
+                if (modalDialog) {
+                    modalDialog.style.zIndex = '10001';
+                    modalDialog.style.pointerEvents = 'auto';
+                }
+            }, 100);
+
+            // Play continuous beeping alert sound
+            startEmergencyBeep();
+
+            // Flash the browser tab title
+            let flashCount = 0;
+            const originalTitle = document.title;
+            const flashInterval = setInterval(() => {
+                document.title = flashCount % 2 === 0 ? '🚨 EMERGENCY SOS 🚨' : originalTitle;
+                flashCount++;
+                if (flashCount > 10) {
+                    clearInterval(flashInterval);
+                    document.title = originalTitle;
+                }
+            }, 500);
+        }
+
+        // Ambulance Siren Sound - "Hi-Lo" Pattern
+        let audioContext = null;
+        let sirenOscillator = null;
+        let sirenGainNode = null;
+        let sirenInterval = null;
+        let isHighTone = true;
+
+        function startEmergencyBeep() {
+            // Stop any existing sound
+            stopEmergencyBeep();
+
+            // Create ambulance siren "Hi-Lo" pattern using Web Audio API
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create main oscillator for siren tone
+                sirenOscillator = audioContext.createOscillator();
+                sirenGainNode = audioContext.createGain();
+                
+                sirenOscillator.connect(sirenGainNode);
+                sirenGainNode.connect(audioContext.destination);
+                
+                // Use square wave for more piercing siren sound
+                sirenOscillator.type = 'square';
+                
+                // Set volume
+                sirenGainNode.gain.setValueAtTime(0.45, audioContext.currentTime);
+                
+                // Start the oscillator
+                sirenOscillator.start(audioContext.currentTime);
+                
+                // Hi-Lo pattern frequencies
+                const highFreq = 1100;  // High tone (Hz) - "HIII"
+                const lowFreq = 700;    // Low tone (Hz) - "LOOO"
+                const toneDuration = 0.35; // Duration for each tone (350ms)
+                
+                // Start with high tone
+                isHighTone = true;
+                sirenOscillator.frequency.setValueAtTime(highFreq, audioContext.currentTime);
+                
+                // Function to alternate between high and low tones
+                function alternateTone() {
+                    if (!sirenOscillator || !audioContext) return;
+                    
+                    const currentTime = audioContext.currentTime;
+                    
+                    if (isHighTone) {
+                        // Switch to low tone
+                        sirenOscillator.frequency.setValueAtTime(lowFreq, currentTime);
+                        isHighTone = false;
+                    } else {
+                        // Switch to high tone
+                        sirenOscillator.frequency.setValueAtTime(highFreq, currentTime);
+                        isHighTone = true;
+                    }
+                }
+                
+                // Alternate tones every toneDuration seconds
+                // This creates: HIII... (350ms) -> LOOO... (350ms) -> HIII... -> LOOO...
+                sirenInterval = setInterval(alternateTone, toneDuration * 1000);
+                
+            } catch (e) {
+                console.error('Web Audio API not available:', e);
+                // Fallback: Use Audio element with loop
+                try {
+                    const sirenData = generateHiLoTone();
+                    alertAudio = new Audio(sirenData);
+                    alertAudio.loop = true;
+                    alertAudio.volume = 0.5;
+                    alertAudio.play().catch(() => {
+                        console.log('Audio autoplay blocked - siren will start on user interaction');
+                    });
+                } catch (err) {
+                    console.error('Could not play siren sound:', err);
+                }
+            }
+        }
+
+        // Generate Hi-Lo siren tone pattern
+        function generateHiLoTone() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const sampleRate = ctx.sampleRate;
+                const highFreq = 1100;
+                const lowFreq = 700;
+                const toneDuration = 0.35; // 350ms per tone
+                const cycleDuration = toneDuration * 2; // Full cycle: high + low
+                
+                const numSamples = Math.floor(sampleRate * cycleDuration);
+                const buffer = ctx.createBuffer(1, numSamples, sampleRate);
+                const data = buffer.getChannelData(0);
+                
+                const highSamples = Math.floor(sampleRate * toneDuration);
+                
+                // Create high tone portion (HIII)
+                for (let i = 0; i < highSamples; i++) {
+                    const t = i / sampleRate;
+                    const phase = (t * highFreq) % 1;
+                    data[i] = (phase < 0.5 ? 1 : -1) * 0.45; // Square wave
+                }
+                
+                // Create low tone portion (LOOO)
+                for (let i = highSamples; i < numSamples; i++) {
+                    const t = (i - highSamples) / sampleRate;
+                    const phase = (t * lowFreq) % 1;
+                    data[i] = (phase < 0.5 ? 1 : -1) * 0.45; // Square wave
+                }
+                
+                // Return a simple fallback data URI
+                return 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQQ';
+            } catch (e) {
+                // Return a simple fallback
+                return 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQQ';
+            }
+        }
+
+        // Stop the siren sound
+        function stopEmergencyBeep() {
+            // Clear the siren interval
+            if (sirenInterval) {
+                clearInterval(sirenInterval);
+                sirenInterval = null;
+            }
+            
+            // Stop Web Audio API oscillator
+            if (sirenOscillator) {
+                try {
+                    sirenOscillator.stop();
+                } catch (e) {
+                    // Oscillator might already be stopped
+                }
+                sirenOscillator = null;
+            }
+            
+            if (sirenGainNode) {
+                try {
+                    sirenGainNode.disconnect();
+                } catch (e) {
+                    // Already disconnected
+                }
+                sirenGainNode = null;
+            }
+            
+            // Reset tone state
+            isHighTone = true;
+            
+            // Stop Audio element fallback
+            if (alertAudio) {
+                if (alertAudio.pause) {
+                    alertAudio.pause();
+                    alertAudio.currentTime = 0;
+                }
+                alertAudio = null;
+            }
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeEmergencyPolling);
+        } else {
+            initializeEmergencyPolling();
+        }
+
+        // Track if button handler has been attached
+        let buttonHandlerAttached = false;
+
+        function initializeEmergencyPolling() {
+            // Resolve button handler - only attach once to prevent duplicate listeners
+            const resolveBtn = document.getElementById('resolveEmergencyBtn');
+            if (resolveBtn && !buttonHandlerAttached) {
+                buttonHandlerAttached = true;
+                resolveBtn.addEventListener('click', async function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const emergencyId = currentEmergencyId;
+                    if (!emergencyId) {
+                        console.error('No current emergency ID');
+                        alert('No emergency selected. Please refresh the page.');
+                        return;
+                    }
+
+                    const btn = this;
+                    btn.disabled = true;
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Responding...';
+
+                    try {
+                        console.log('Acknowledging emergency ID:', emergencyId);
+                        
+                        // Acknowledge emergency (this triggers "Help is on the Way" modal for student, but doesn't mark as resolved)
+                        const response = await fetch('/Dashboard/AcknowledgeEmergency', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ emergencyId: emergencyId })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        console.log('Acknowledge response:', result);
+
+                        if (result.success) {
+                            // Stop the beeping sound
+                            stopEmergencyBeep();
+                            
+                            // Hide modal
+                            const modalElement = document.getElementById('emergencyModal');
+                            if (modalElement) {
+                                const modal = bootstrap.Modal.getInstance(modalElement);
+                                if (modal) {
+                                    modal.hide();
+                                }
+                            }
+                            
+                            // Mark this emergency as acknowledged so it won't show again
+                            lastCheckedEmergencyId = emergencyId;
+                            currentEmergencyId = null;
+                            
+                            // Show success message
+                            if (typeof showMessage === 'function') {
+                                showMessage('Emergency acknowledged. Student has been notified that help is on the way.', 'success');
+                            } else {
+                                alert('Emergency acknowledged. Student has been notified that help is on the way.');
+                            }
+                            
+                            // Small delay before reload to ensure message is shown
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        } else {
+                            const errorMsg = 'Failed to acknowledge emergency: ' + (result.error || 'Unknown error');
+                            console.error('Acknowledge failed:', errorMsg);
+                            if (typeof showMessage === 'function') {
+                                showMessage(errorMsg, 'error');
+                            } else {
+                                alert(errorMsg);
+                            }
+                            btn.disabled = false;
+                            btn.innerHTML = originalHtml;
+                        }
+                    } catch (error) {
+                        console.error('Error acknowledging emergency:', error);
+                        const errorMsg = 'Error acknowledging emergency: ' + (error.message || 'Please try again.');
+                        if (typeof showMessage === 'function') {
+                            showMessage(errorMsg, 'error');
+                        } else {
+                            alert(errorMsg);
+                        }
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                });
+                
+                console.log('Respond button handler attached');
+            } else if (!resolveBtn) {
+                console.warn('Respond button not found in DOM');
+            }
+
+            // Start emergency check when page loads
+            startEmergencyCheck();
+            
+            // Start help received check
+            startHelpReceivedCheck();
+        }
+
+        // Check for help received notifications
+        function startHelpReceivedCheck() {
+            if (helpReceivedCheckInterval) {
+                clearInterval(helpReceivedCheckInterval);
+            }
+
+            helpReceivedCheckInterval = setInterval(async () => {
+                await checkForHelpReceived();
+            }, 5000); // Check every 5 seconds
+
+            // Check immediately on page load
+            checkForHelpReceived();
+        }
+
+        // Check for help received notifications
+        async function checkForHelpReceived() {
+            try {
+                const response = await fetch('/Dashboard/GetHelpReceivedNotifications');
+                if (!response.ok) {
+                    console.error('Failed to fetch help received notifications:', response.status);
+                    return;
+                }
+                
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.length > 0) {
+                    // Get the most recent help received notification
+                    const latestHelpReceived = result.data[0];
+                    const latestId = parseInt(latestHelpReceived.emergencyId);
+                    const lastCheckedId = lastCheckedHelpReceivedId ? parseInt(lastCheckedHelpReceivedId) : null;
+                    
+                    // Show modal if this is a new help received notification
+                    if (latestId !== lastCheckedId && latestId !== currentHelpReceivedId) {
+                        showHelpReceivedModal(latestHelpReceived);
+                        currentHelpReceivedId = latestId;
+                        lastCheckedHelpReceivedId = latestId;
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking for help received notifications:', error);
+            }
+        }
+
+        // Show help received modal
+        function showHelpReceivedModal(helpReceivedData) {
+            const modalElement = document.getElementById('helpReceivedModal');
+            if (!modalElement) {
+                console.error('Help received modal element not found');
+                return;
+            }
+
+            // Populate modal with data
+            document.getElementById('helpReceivedStudentName').textContent = helpReceivedData.studentName || 'N/A';
+            document.getElementById('helpReceivedStudentId').textContent = helpReceivedData.studentIdNumber || 'N/A';
+            document.getElementById('helpReceivedLocation').textContent = helpReceivedData.location || 'N/A';
+
+            let modal = bootstrap.Modal.getInstance(modalElement);
+            if (!modal) {
+                modal = new bootstrap.Modal(modalElement, {
+                    backdrop: 'static',
+                    keyboard: false
+                });
+            }
+
+            modal.show();
+
+            // Handle resolve button
+            const resolveBtn = document.getElementById('resolveHelpReceivedBtn');
+            if (resolveBtn) {
+                resolveBtn.onclick = async function() {
+                    const btn = this;
+                    btn.disabled = true;
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resolving...';
+
+                    try {
+                        const response = await fetch('/Dashboard/MarkHelpReceivedAsResolved', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ emergencyId: helpReceivedData.emergencyId })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            modal.hide();
+                            
+                            // Show success message if showMessage function exists
+                            if (typeof showMessage === 'function') {
+                                showMessage('Emergency marked as resolved', 'success');
+                            } else {
+                                alert('Emergency marked as resolved');
+                            }
+                            
+                            // Reset tracking
+                            currentHelpReceivedId = null;
+                            lastCheckedHelpReceivedId = helpReceivedData.emergencyId;
+                            
+                            // Reload page to refresh the emergency table
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 500);
+                        } else {
+                            const errorMsg = 'Failed to resolve help received notification: ' + (result.error || 'Unknown error');
+                            if (typeof showMessage === 'function') {
+                                showMessage(errorMsg, 'error');
+                            } else {
+                                alert(errorMsg);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error resolving help received notification:', error);
+                        const errorMsg = 'Error resolving help received notification. Please try again.';
+                        if (typeof showMessage === 'function') {
+                            showMessage(errorMsg, 'error');
+                        } else {
+                            alert(errorMsg);
+                        }
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check"></i> Resolved';
+                    }
+                };
+            }
+        }
+    })();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+<script>
+    // ===== SIGNALR FOR REAL-TIME EMERGENCY NOTIFICATIONS =====
+    (function() {
+        let emergencyConnection = null;
+
+        // Initialize SignalR for emergency notifications
+        async function initializeEmergencySignalR() {
+            try {
+                emergencyConnection = new signalR.HubConnectionBuilder()
+                    .withUrl("/messageHub")
+                    .withAutomaticReconnect()
+                    .build();
+
+                // Listen for new emergencies in real-time
+                emergencyConnection.on("NewEmergency", function (emergency) {
+                    console.log('New emergency received via SignalR:', emergency);
+                    if (emergency && emergency.emergencyId) {
+                        const emergencyId = parseInt(emergency.emergencyId);
+                        // Show modal if it's a new emergency
+                        if (emergencyId !== currentEmergencyId) {
+                            showEmergencyModal(emergency);
+                            currentEmergencyId = emergencyId;
+                            lastCheckedEmergencyId = emergencyId;
+                        }
+                    }
+                });
+
+                // Handle connection events
+                emergencyConnection.onreconnecting(() => {
+                    console.log('Emergency SignalR reconnecting...');
+                });
+
+                emergencyConnection.onreconnected(async () => {
+                    console.log('Emergency SignalR reconnected');
+                    // Rejoin clinic staff group
+                    await emergencyConnection.invoke("JoinClinicStaffGroup").catch(err => console.error(err));
+                });
+
+                emergencyConnection.onclose(() => {
+                    console.log('Emergency SignalR connection closed');
+                });
+
+                // Start connection
+                await emergencyConnection.start();
+                console.log('Emergency SignalR connected');
+
+                // Join clinic staff group to receive emergency notifications
+                await emergencyConnection.invoke("JoinClinicStaffGroup");
+                console.log('Joined clinic staff group for emergency notifications');
+            } catch (err) {
+                console.error('Error starting Emergency SignalR connection:', err);
+                // Fallback to polling if SignalR fails
+            }
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeEmergencySignalR);
+        } else {
+            initializeEmergencySignalR();
+        }
+    })();
+</script>
+
+<style>
+    /* Emergency Modal Styles - High z-index to ensure it's always on top */
+    #emergencyModal {
+        z-index: 10000 !important;
+    }
+
+    #emergencyModal .modal-backdrop {
+        z-index: 9999 !important;
+        background-color: rgba(0, 0, 0, 0.85) !important;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-backdrop.show {
+        z-index: 9999 !important;
+    }
+
+    #emergencyModal .modal-dialog {
+        z-index: 10001 !important;
+        pointer-events: auto !important;
+        max-height: 95vh;
+        margin: 0.5rem auto;
+        display: flex;
+        align-items: center;
+    }
+
+    .emergency-modal-content {
+        border: 3px solid #dc3545;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(220, 53, 69, 0.5);
+        z-index: 10000 !important;
+        position: relative;
+        pointer-events: auto !important;
+        overflow: hidden;
+        max-height: calc(95vh - 1rem);
+        display: flex;
+        flex-direction: column;
+        animation: emergencyModalEntrance 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        width: 100%;
+    }
+
+    @@keyframes emergencyModalEntrance {
+        0% {
+            opacity: 0;
+            transform: scale(0.9) translateY(-20px);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    #emergencyModal .modal-content,
+    #emergencyModal .modal-header,
+    #emergencyModal .modal-body,
+    #emergencyModal .modal-footer,
+    #emergencyModal button {
+        pointer-events: auto !important;
+    }
+
+    body.modal-open #emergencyModal {
+        z-index: 10000 !important;
+    }
+
+    body.modal-open #emergencyModal ~ .modal-backdrop {
+        z-index: 9999 !important;
+    }
+
+    .emergency-header {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+        border-bottom: none;
+        padding: 0.875rem 1.25rem;
+        position: relative;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .emergency-header::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+        pointer-events: none;
+        animation: emergencyPulse 3s ease-in-out infinite;
+    }
+
+    @@keyframes emergencyPulse {
+        0%, 100% { opacity: 0.2; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(1.05); }
+    }
+
+    .emergency-header .modal-title {
+        font-weight: 700;
+        font-size: 1.25rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: relative;
+        z-index: 1;
+        text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        margin: 0;
+    }
+
+    .emergency-header .modal-title i {
+        font-size: 1.5rem;
+        animation: emergencyIconFlash 1.5s ease-in-out infinite;
+    }
+
+    @@keyframes emergencyIconFlash {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.1); }
+    }
+
+    .emergency-body {
+        padding: 1rem 1.25rem;
+        background: #ffffff;
+        overflow-y: auto;
+        flex: 1;
+        min-height: 0;
+        max-height: calc(95vh - 200px);
+    }
+
+    .emergency-alert {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        border: none;
+        border-left: 4px solid #dc3545;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        margin-bottom: 0.875rem;
+        padding: 0.75rem 1rem;
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .emergency-alert-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .emergency-alert-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        animation: emergencyBellRing 1s ease-in-out infinite;
+        box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+    }
+
+    @@keyframes emergencyBellRing {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-10deg); }
+        75% { transform: rotate(10deg); }
+    }
+
+    .emergency-alert-icon i {
+        color: white;
+        font-size: 1.25rem;
+    }
+
+    .emergency-alert-text {
+        flex: 1;
+    }
+
+    .emergency-alert-text strong {
+        color: #991b1b;
+        font-size: 1rem;
+    }
+
+    .emergency-info {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .info-row {
+        display: flex;
+        align-items: center;
+        padding: 0.625rem 0.75rem;
+        border-bottom: 1px solid #e2e8f0;
+        transition: background-color 0.2s ease;
+        border-radius: 6px;
+        margin-bottom: 0.375rem;
+        background: #f8f9fa;
+        position: relative;
+    }
+
+    .info-row::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 3px;
+        height: 100%;
+        background: linear-gradient(180deg, #dc3545 0%, #c82333 100%);
+        border-radius: 6px 0 0 6px;
+    }
+
+    .info-row:hover {
+        background: #fff5f5;
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    .info-label {
+        font-weight: 600;
+        min-width: 140px;
+        color: #2D3748;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .info-icon-wrapper {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 1px 4px rgba(220, 53, 69, 0.15);
+    }
+
+    .info-icon-wrapper i {
+        color: #dc3545;
+        font-size: 1rem;
+    }
+
+    .info-value {
+        color: #212529;
+        flex: 1;
+        font-weight: 500;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .emergency-footer {
+        border-top: 2px solid #e2e8f0;
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    .emergency-cancel-btn {
+        padding: 0.625rem 1.5rem;
+        font-weight: 600;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        border: none;
+        color: white;
+        box-shadow: 0 2px 8px rgba(108, 117, 125, 0.25);
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .emergency-cancel-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(108, 117, 125, 0.35);
+        background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+    }
+
+    .emergency-resolve-btn {
+        padding: 0.75rem 2rem;
+        font-weight: 700;
+        font-size: 0.95rem;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        color: white;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        text-transform: uppercase;
+        letter-spacing: 0.75px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.625rem;
+        min-width: 200px;
+        width: 100%;
+        max-width: 350px;
+    }
+
+    .emergency-resolve-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s ease;
+    }
+
+    .emergency-resolve-btn:hover::before {
+        left: 100%;
+    }
+
+    .emergency-resolve-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    }
+
+    .emergency-resolve-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+    }
+
+    .emergency-resolve-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .emergency-resolve-btn i {
+        font-size: 1.1rem;
+    }
+
+    @@media (max-width: 768px) {
+        #emergencyModal .modal-dialog {
+            max-height: 95vh;
+            margin: 0.5rem;
+        }
+
+        .emergency-header {
+            padding: 0.875rem 1rem;
+        }
+
+        .emergency-header .modal-title {
+            font-size: 1.1rem;
+            gap: 0.5rem;
+        }
+
+        .emergency-header .modal-title i {
+            font-size: 1.25rem;
+        }
+
+        .emergency-body {
+            padding: 1rem;
+        }
+
+        .emergency-alert {
+            padding: 0.75rem;
+            margin-bottom: 0.875rem;
+        }
+
+        .emergency-alert-icon {
+            width: 36px;
+            height: 36px;
+        }
+
+        .emergency-alert-icon i {
+            font-size: 1.1rem;
+        }
+
+        .emergency-info {
+            padding: 0.5rem;
+        }
+
+        .info-row {
+            padding: 0.625rem;
+            margin-bottom: 0.375rem;
+        }
+
+        .info-label {
+            min-width: 120px;
+            font-size: 0.85rem;
+        }
+
+        .info-icon-wrapper {
+            width: 28px;
+            height: 28px;
+        }
+
+        .info-icon-wrapper i {
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            font-size: 0.9rem;
+        }
+
+        .emergency-footer {
+            padding: 1rem;
+        }
+
+        .emergency-resolve-btn {
+            width: 100%;
+            max-width: 100%;
+            padding: 0.875rem 1.5rem;
+            font-size: 0.95rem;
+        }
+    }
+
+    /* Help Received Modal Styles */
+    .help-received-modal-content {
+        border: 3px solid #10b981;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(16, 185, 129, 0.5);
+        animation: helpReceivedModalEntrance 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        overflow: hidden;
+    }
+
+    @@keyframes helpReceivedModalEntrance {
+        0% {
+            opacity: 0;
+            transform: scale(0.9) translateY(-20px);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .help-received-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border-bottom: none;
+        padding: 0.875rem 1.25rem;
+    }
+
+    .help-received-header .modal-title {
+        font-weight: 700;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0;
+    }
+
+    .help-received-header .modal-title i {
+        font-size: 1.5rem;
+    }
+
+    .help-received-body {
+        padding: 2rem 1.5rem;
+        background: #ffffff;
+        text-align: center;
+    }
+
+    .help-received-message-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .help-received-icon-wrapper {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+    }
+
+    .help-received-icon-wrapper i {
+        color: #10b981;
+        font-size: 3rem;
+    }
+
+    .help-received-title {
+        color: #059669;
+        font-weight: 700;
+        font-size: 1.75rem;
+        margin: 0;
+    }
+
+    .help-received-message {
+        color: #374151;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        margin: 0;
+        max-width: 500px;
+    }
+
+    .help-received-info {
+        margin-top: 1.5rem;
+        width: 100%;
+        max-width: 500px;
+        text-align: left;
+    }
+
+    .help-received-footer {
+        border-top: 3px solid #d1fae5;
+        padding: 1.5rem 2rem;
+        background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        display: flex;
+        justify-content: center;
+    }
+
+    .help-received-resolve-btn {
+        padding: 1rem 3rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        color: white;
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+        transition: all 0.3s ease;
+    }
+
+    .help-received-resolve-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+    }
+</style>
+

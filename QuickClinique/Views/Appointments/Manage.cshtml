@@ -1,0 +1,721 @@
+@model IEnumerable<QuickClinique.Models.Appointment>
+@{
+    ViewData["Title"] = "Manage Appointments";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/appoMan.css" />
+}
+
+<div class="appointment-management">
+    @Html.AntiForgeryToken()
+
+    <!-- Enhanced Header -->
+    <div class="management-header">
+        <div class="header-content">
+            <h2><i class="fas fa-calendar-check"></i> Appointment Management</h2>
+            <p class="header-subtitle">Manage and track all patient appointments</p>
+        </div>
+        <div class="header-actions">
+            @*<button class="btn btn-primary" onclick="refreshAppointments()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>*@
+            <a href="@Url.Action("Queue")" class="btn btn-success">
+                <i class="fas fa-users"></i> Queue Management
+            </a>
+        </div>
+    </div>
+
+    <!-- Enhanced Statistics Cards -->
+    <div class="stats-cards">
+        <div class="stat-card stat-card-total">
+            <div class="stat-icon">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" id="totalAppointments">@Model.Count()</div>
+                <div class="stat-label">Total Appointments</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-pending">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" id="pendingAppointments">@Model.Count(a => a.AppointmentStatus == "Pending")</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-confirmed">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" id="confirmedAppointments">@Model.Count(a => a.AppointmentStatus == "Confirmed")</div>
+                <div class="stat-label">Confirmed</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-today">
+            <div class="stat-icon">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number" id="todayAppointments">@Model.Count(a => a.Schedule.Date == GetPhilippineDate())</div>
+                <div class="stat-label">Today's Appointments</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Filters -->
+    <div class="filters">
+        <div class="filter-header">
+            <h5><i class="fas fa-filter"></i> Filter Appointments</h5>
+        </div>
+        <div class="filter-group">
+            <div class="filter-item">
+                <label for="statusFilter"><i class="fas fa-info-circle"></i> Status</label>
+                <select id="statusFilter" class="form-control">
+                    <option value="">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div class="filter-item">
+                <label for="dateFilter"><i class="fas fa-calendar"></i> Date</label>
+                <input type="date" id="dateFilter" class="form-control">
+            </div>
+            <div class="filter-item">
+                <label for="searchPatient"><i class="fas fa-search"></i> Search Patient / ID Number</label>
+                <input type="text" id="searchPatient" class="form-control" placeholder="Enter patient name or ID number...">
+            </div>
+            <div class="filter-item filter-actions">
+                <button class="btn btn-secondary" onclick="clearFilters()">
+                    <i class="fas fa-times-circle"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Appointments Table -->
+    <div class="table-card">
+        <div class="table-header">
+            <h5><i class="fas fa-list"></i> Appointments List</h5>
+            <span class="table-count" id="tableCount">Showing @Model.Count() appointments</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover" id="appointmentsTable">
+                <thead>
+                    <tr>
+                        <th><i class="fas fa-id-card"></i> Student ID</th>
+                        <th><i class="fas fa-user"></i> Patient</th>
+                        <th><i class="fas fa-calendar"></i> Date & Time</th>
+                        <th><i class="fas fa-info-circle"></i> Status</th>
+                        <th><i class="fas fa-hashtag"></i> Queue</th>
+                        <th><i class="fas fa-comment-medical"></i> Reason</th>
+                        <th><i class="fas fa-notes-medical"></i> Symptoms</th>
+                        <th><i class="fas fa-clock"></i> Date Booked</th>
+                        <th><i class="fas fa-cog"></i> Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center">
+                                <div class="no-appointments">
+                                    <i class="fas fa-calendar-times"></i>
+                                    <h5>No Appointments Found</h5>
+                                    <p>There are no appointments to display at this time.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model)
+                        {
+                            <tr data-status="@item.AppointmentStatus" data-date="@item.Schedule.Date.ToString("yyyy-MM-dd")" data-patient="@item.Patient.FullName.ToLower()" data-student-id="@item.Patient.Idnumber">
+                                <td>
+                                    <span class="id-badge"><i class="fas fa-id-card"></i> @item.Patient.Idnumber</span>
+                                </td>
+                                <td>
+                                    <div class="patient-info">
+                                        <i class="fas fa-user-circle patient-icon"></i>
+                                        <span>@item.Patient.FullName</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="date-info">
+                                        <div class="date-primary">@item.Schedule.Date.ToString("MM/dd/yyyy")</div>
+                                        <div class="appointment-time">
+                                            <i class="fas fa-clock"></i> @item.Schedule.StartTime.ToString("h:mm tt") - @item.Schedule.EndTime.ToString("h:mm tt")
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-@item.AppointmentStatus.ToLower().Replace(" ", "-")">
+                                        @if (item.AppointmentStatus == "Pending")
+                                        {
+                                            <i class="fas fa-clock"></i>
+                                        }
+                                        else if (item.AppointmentStatus == "Confirmed")
+                                        {
+                                            <i class="fas fa-check"></i>
+                                        }
+                                        else if (item.AppointmentStatus == "In Progress")
+                                        {
+                                            <i class="fas fa-spinner"></i>
+                                        }
+                                        else if (item.AppointmentStatus == "Completed")
+                                        {
+                                            <i class="fas fa-check-circle"></i>
+                                        }
+                                        else if (item.AppointmentStatus == "Cancelled")
+                                        {
+                                            <i class="fas fa-times-circle"></i>
+                                        }
+                                        @item.AppointmentStatus
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="queue-info-cell">
+                                        <span class="queue-badge">#@item.QueueNumber</span>
+                                        <div class="queue-status">@item.QueueStatus</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="reason-badge">
+                                        @{
+                                            string reasonIcon = "fa-stethoscope"; // default icon
+                                            string reason = item.ReasonForVisit?.ToLower() ?? "";
+                                            if (reason.Contains("medical-checkup") || reason.Contains("general medical"))
+                                            {
+                                                reasonIcon = "fa-heartbeat";
+                                            }
+                                            else if (reason.Contains("dental-checkup") || reason.Contains("dental"))
+                                            {
+                                                reasonIcon = "fa-tooth";
+                                            }
+                                            else if (reason.Contains("dental-cleaning") || reason.Contains("prophylaxis"))
+                                            {
+                                                reasonIcon = "fa-spray-can";
+                                            }
+                                            else if (reason.Contains("dental-pasta") || reason.Contains("fillings"))
+                                            {
+                                                reasonIcon = "fa-tools";
+                                            }
+                                            else if (reason.Contains("dental-extraction") || reason.Contains("extraction"))
+                                            {
+                                                reasonIcon = "fa-tooth";
+                                            }
+                                            else if (reason.Contains("consultation"))
+                                            {
+                                                reasonIcon = "fa-user-md";
+                                            }
+                                            else if (reason.Contains("bp-monitoring") || reason.Contains("blood pressure"))
+                                            {
+                                                reasonIcon = "fa-heartbeat";
+                                            }
+                                        }
+                                        <i class="fas @reasonIcon"></i> @item.ReasonForVisit
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="symptoms-text" title="@item.Symptoms">
+                                        <i class="fas fa-notes-medical"></i> @item.Symptoms
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="date-booked">
+                                        <i class="fas fa-calendar"></i> @item.DateBooked.ToString("MM/dd/yyyy")
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        @if (item.AppointmentStatus == "Pending")
+                                        {
+                                            <button class="btn btn-success btn-sm" onclick="updateStatus(@item.AppointmentId, 'Confirmed')" title="Confirm Appointment">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        }
+                                        @if (item.AppointmentStatus == "In Progress")
+                                        {
+                                            <button class="btn btn-success btn-sm" onclick="completeAppointment(@item.AppointmentId, @item.PatientId)" title="Complete Appointment">
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                        }
+                                        @if (item.AppointmentStatus != "Completed" && item.AppointmentStatus != "Cancelled")
+                                        {
+                                            <button class="btn btn-warning btn-sm" onclick="showCancelAppointmentModal(@item.AppointmentId)" title="Cancel Appointment">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        }
+                                        <a href="@Url.Action("Details", new { id = item.AppointmentId })" class="btn btn-info btn-sm" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Emergency Schedules Table -->
+    <div class="table-card">
+        <div class="table-header">
+            <h5><i class="fas fa-exclamation-triangle"></i> Emergency Schedules</h5>
+            <div class="emergency-header-wrapper">
+                <div class="emergency-search-wrapper">
+                    <input type="text" id="searchEmergency" class="form-control" placeholder="Search by ID number...">
+                </div>
+                <span class="table-count" id="emergencyTableCount">Loading...</span>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover" id="emergenciesTable">
+                <thead>
+                    <tr>            
+                
+                        <th><i class="fas fa-id-card"></i> Student ID</th>
+                        <th><i class="fas fa-map-marker-alt"></i> Location</th>
+                        <th><i class="fas fa-tools"></i> Needs</th>
+                        <th><i class="fas fa-clock"></i> Created At</th>
+                        <th><i class="fas fa-info-circle"></i> Status</th>
+                    </tr>
+                </thead>
+                <tbody id="emergenciesTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center">
+                            <div class="no-appointments">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <h5>Loading Emergency Schedules...</h5>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Complete Appointment Modal -->
+<div class="modal fade" id="completeAppointmentModal" tabindex="-1" role="dialog" aria-labelledby="completeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="completeModalLabel">
+                    <i class="fas fa-check-circle"></i> Complete Appointment & Create Medical Record
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="completeAppointmentForm">
+                    <input type="hidden" id="completeAppointmentId" name="appointmentId">
+                    <input type="hidden" id="completePatientId" name="patientId">
+
+                    <div class="alert alert-info alert-custom">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Important:</strong> Completing this appointment will automatically create a medical record for the patient with the information provided below.
+                        </div>
+                    </div>
+
+                    <!-- Diagnosis Section -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-stethoscope"></i> Diagnosis</h6>
+                        <div class="form-group">
+                            <label for="diagnosis">
+                                Primary Diagnosis <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3" required
+                                      placeholder="Enter the primary diagnosis and findings..."></textarea>
+                            <small class="form-text text-muted">Provide a detailed description of the patient's condition</small>
+                        </div>
+                    </div>
+
+                    <!-- Treatment Section -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-pills"></i> Treatment & Medications</h6>
+                        <div class="form-group">
+                            <label for="medications">
+                                Medications Prescribed <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="medications" name="medications" rows="3" required
+                                      placeholder="List all medications with dosage and frequency..."></textarea>
+                            <small class="form-text text-muted">Example: Amoxicillin 500mg, 3 times daily for 7 days</small>
+                        </div>
+                    </div>
+
+                    <!-- Treatment Provider Information Section -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-user-md"></i> Treatment Provider Information</h6>
+                        <div class="form-group">
+                            <label for="treatmentProvidedByName">
+                                Provider Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="treatmentProvidedByName" name="treatmentProvidedByName" 
+                                   placeholder="Enter the name of the doctor providing treatment" required />
+                            <small class="form-text text-muted">Name of the healthcare provider completing this appointment</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="doctorLicenseNumber">
+                                License Number <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="doctorLicenseNumber" name="doctorLicenseNumber" 
+                                   placeholder="Enter the license number" required />
+                            <small class="form-text text-muted">Medical license number of the provider</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-success" onclick="submitCompleteAppointment()">
+                    <i class="fas fa-check-circle"></i> Complete & Save Record
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@*<!-- Next Patient Triage Modal (for starting appointments) -->
+<div class="modal fade" id="nextPatientModal" tabindex="-1" role="dialog" aria-labelledby="nextPatientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="nextPatientModalLabel">
+                    <i class="fas fa-user-check"></i> Start Appointment - Clinical Triage
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="nextPatientForm">
+                    <input type="hidden" id="startAppointmentId" name="appointmentId">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Clinical Triage:</strong> Record initial patient information before consultation.
+                    </div>
+
+                    <!-- Patient Information Section -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-user-md"></i> Patient Information</h6>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="triageAge">
+                                        <i class="fas fa-birthday-cake"></i> Age
+                                    </label>
+                                    <input type="number" class="form-control" id="triageAge" name="age"
+                                           placeholder="Age" min="1" max="120">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="triageGender">
+                                        <i class="fas fa-venus-mars"></i> Gender
+                                    </label>
+                                    <select class="form-control" id="triageGender" name="gender">
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="triageBMI">
+                                        <i class="fas fa-weight"></i> BMI
+                                    </label>
+                                    <input type="number" class="form-control" id="triageBMI" name="bmi"
+                                           placeholder="Body Mass Index" step="0.1" min="10" max="50" readonly>
+                                    <small class="form-text text-muted">Calculated from height and weight below</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BMI Calculator Section -->
+                        <div class="form-section queue-form-section">
+                            <h6 class="section-title"><i class="fas fa-heartbeat"></i> BMI Calculator</h6>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="triageHeight">
+                                            <i class="fas fa-ruler-vertical"></i> Height (cm)
+                                        </label>
+                                        <input type="number" class="form-control" id="triageHeight" 
+                                               placeholder="170" min="100" max="250">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="triageWeight">
+                                            <i class="fas fa-weight-hanging"></i> Weight (kg)
+                                        </label>
+                                        <input type="number" class="form-control" id="triageWeight" 
+                                               placeholder="70" min="30" max="200">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="button" class="btn btn-primary btn-sm queue-btn-mb" id="calculateTriageBMI">
+                                <i class="fas fa-calculator"></i> Calculate BMI
+                            </button>
+                            
+                            <div class="bmi-result-modal bmi-result-modal-hidden" id="bmiResultModal">
+                                <div class="bmi-result-value-modal" id="bmiValueModal">0.0</div>
+                                <div class="bmi-result-category-modal" id="bmiCategoryModal">Category</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="triageAllergies">
+                                <i class="fas fa-exclamation-triangle"></i> Known Allergies
+                            </label>
+                            <input type="text" class="form-control" id="triageAllergies" name="allergies"
+                                   placeholder="List any known allergies (e.g., Penicillin, Peanuts)">
+                        </div>
+                    </div>
+
+                    <!-- Initial Observations -->
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-notes-medical"></i> Initial Observations</h6>
+                        <div class="form-group">
+                            <label for="triageNotes">Triage Notes (Optional)</label>
+                            <textarea class="form-control" id="triageNotes" name="triageNotes" rows="3"
+                                      placeholder="Record any initial observations or vital signs..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="submitStartAppointment()">
+                    <i class="fas fa-play"></i> Start Appointment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>*@
+
+<!-- Cancel Appointment Modal -->
+<div class="modal fade" id="cancelAppointmentModal" tabindex="-1" role="dialog" aria-labelledby="cancelModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="cancelModalLabel">
+                    <i class="fas fa-times-circle"></i> Cancel Appointment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This action cannot be undone. Please select a reason for cancellation.
+                </div>
+                
+                <form id="cancelAppointmentForm">
+                    <input type="hidden" id="cancelAppointmentId" name="appointmentId">
+                    
+                    <div class="form-section">
+                        <h6 class="section-title"><i class="fas fa-list"></i> Cancellation Reason <span class="text-danger">*</span></h6>
+                        <div class="form-group">
+                            <div class="cancellation-reasons">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="cancellationReason" id="reasonNoShow" value="No show" required>
+                                    <label class="form-check-label" for="reasonNoShow">
+                                        <i class="fas fa-user-slash"></i> No show
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="cancellationReason" id="reasonDoubleBooking" value="Double booking" required>
+                                    <label class="form-check-label" for="reasonDoubleBooking">
+                                        <i class="fas fa-calendar-times"></i> Double booking
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="cancellationReason" id="reasonClinicHours" value="Change in clinic hours" required>
+                                    <label class="form-check-label" for="reasonClinicHours">
+                                        <i class="fas fa-clock"></i> Change in clinic hours
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="cancellationReason" id="reasonNoDoctor" value="No doctor available" required>
+                                    <label class="form-check-label" for="reasonNoDoctor">
+                                        <i class="fas fa-user-md"></i> No doctor available
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Close
+                </button>
+                <button type="button" class="btn btn-warning" onclick="submitCancelAppointment()">
+                    <i class="fas fa-times-circle"></i> Cancel Appointment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+@section Scripts {
+    <script src="~/js/appoMan.js"></script>
+    <script>
+        // BMI Calculation for Next Patient Modal
+        document.addEventListener('DOMContentLoaded', function() {
+            const calculateBtn = document.getElementById('calculateTriageBMI');
+            if (calculateBtn) {
+                calculateBtn.addEventListener('click', calculateTriageBMI);
+            }
+            
+            const heightInput = document.getElementById('triageHeight');
+            const weightInput = document.getElementById('triageWeight');
+            
+            if (heightInput) {
+                heightInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        calculateTriageBMI();
+                    }
+                });
+            }
+            
+            if (weightInput) {
+                weightInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        calculateTriageBMI();
+                    }
+                });
+            }
+        });
+
+        function calculateTriageBMI() {
+            const height = parseFloat(document.getElementById('triageHeight')?.value);
+            const weight = parseFloat(document.getElementById('triageWeight')?.value);
+            const bmiInput = document.getElementById('triageBMI');
+            const bmiResult = document.getElementById('bmiResultModal');
+            const bmiValue = document.getElementById('bmiValueModal');
+            const bmiCategory = document.getElementById('bmiCategoryModal');
+
+            if (!height || height < 100 || height > 250) {
+                alert('Please enter a valid height between 100 and 250 cm');
+                return;
+            }
+
+            if (!weight || weight < 30 || weight > 200) {
+                alert('Please enter a valid weight between 30 and 200 kg');
+                return;
+            }
+
+            const heightInMeters = height / 100;
+            const bmi = weight / (heightInMeters * heightInMeters);
+            const roundedBMI = Math.round(bmi * 10) / 10;
+
+            if (bmiInput) {
+                bmiInput.value = roundedBMI;
+            }
+
+            let category = '';
+            let categoryClass = '';
+
+            if (bmi < 18.5) {
+                category = 'Underweight';
+                categoryClass = 'underweight';
+            } else if (bmi < 25) {
+                category = 'Normal';
+                categoryClass = 'normal';
+            } else if (bmi < 30) {
+                category = 'Overweight';
+                categoryClass = 'overweight';
+            } else {
+                category = 'Obese';
+                categoryClass = 'obese';
+            }
+
+            if (bmiValue) {
+                bmiValue.textContent = roundedBMI;
+            }
+            if (bmiCategory) {
+                bmiCategory.textContent = category;
+                bmiCategory.className = 'bmi-result-category-modal ' + categoryClass;
+            }
+            if (bmiResult) {
+                bmiResult.style.display = 'block';
+            }
+        }
+    </script>
+    <style>
+        .bmi-result-modal {
+            background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);
+            border-left: 4px solid #4ECDC4;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            animation: slideDown 0.4s ease-out;
+        }
+
+        .bmi-result-value-modal {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .bmi-result-category-modal {
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .bmi-result-category-modal.underweight {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            color: white;
+        }
+
+        .bmi-result-category-modal.normal {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+        }
+
+        .bmi-result-category-modal.overweight {
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            color: white;
+        }
+
+        .bmi-result-category-modal.obese {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: white;
+        }
+
+        @@keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+}

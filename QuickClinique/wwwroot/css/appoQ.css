@@ -1,0 +1,1360 @@
+﻿/* Base Styles */
+.queue-management {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    background: linear-gradient(135deg, #179C8E 0%, #4FC4D3 100%);
+    min-height: calc(100vh - 60px);
+}
+
+.content-card {
+    background: #FFFFFF;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+}
+
+    .content-card:hover {
+        box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        transform: translateY(-5px);
+    }
+
+/* Header Section */
+.queue-header {
+    background: linear-gradient(135deg, #179C8E 0%, #4FC4D3 100%);
+    color: white;
+    padding: 2.5rem;
+    margin-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+    .queue-header h2 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 2.2rem;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+        .queue-header h2 i {
+            font-size: 2.5rem;
+            opacity: 0.9;
+        }
+
+/* Buttons */
+.btn {
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #179C8E;
+    color: white;
+}
+
+    .btn-primary:hover {
+        background: #3db5ad;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+    }
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+    .btn-success:hover {
+        background: #218838;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+    }
+
+.btn-warning {
+    background: #ffc107;
+    color: #333;
+}
+
+    .btn-warning:hover {
+        background: #e0a800;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+    }
+
+.btn-info {
+    background: #17a2b8;
+    color: white;
+}
+
+    .btn-info:hover {
+        background: #138496;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
+    }
+
+.btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    border-radius: 8px;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    border-radius: 8px;
+}
+
+/* Current Patient Section */
+.current-patient {
+    background: linear-gradient(135deg, #179C8E 0%, #4FC4D3 100%);
+    color: white;
+    padding: 3.5rem 2.5rem;
+    border-radius: 15px;
+    text-align: center;
+    margin: 2rem;
+    box-shadow: 0 10px 30px rgba(78, 205, 196, 0.3);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.current-patient > * {
+    text-align: center !important;
+    width: 100% !important;
+}
+
+.current-patient .patient-name,
+.current-patient .queue-number {
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+    .current-patient:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(78, 205, 196, 0.4);
+    }
+
+    .current-patient h3 {
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+
+/* More specific selector to override dashboard-index.css */
+.current-patient .patient-name {
+    font-size: 2.5rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 1rem !important;
+    letter-spacing: -0.5px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    text-align: center !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.75rem !important;
+    line-height: 1.3 !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    color: white !important;
+}
+
+.current-patient .patient-name i {
+    font-size: 2rem !important;
+    color: white !important;
+    opacity: 1 !important;
+}
+
+.current-patient .queue-number {
+    font-size: 1.5rem !important;
+    opacity: 0.95 !important;
+    margin-bottom: 1.5rem !important;
+    font-weight: 600 !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+    text-align: center !important;
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    letter-spacing: 0.3px !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    color: white !important;
+}
+
+.current-patient .queue-number i {
+    font-size: 1.2rem !important;
+    color: white !important;
+    opacity: 1 !important;
+}
+
+.queue-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+/* Queue Stats */
+.queue-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem;
+}
+
+.stat-card {
+    background: #FFFFFF;
+    padding: 1.5rem;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    border-top: 4px solid #4ECDC4;
+}
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: #718096;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+/* Waiting Queue */
+.waiting-queue {
+    background: #FFFFFF;
+    border-radius: 15px;
+    padding: 2rem;
+    margin: 2rem;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+    .waiting-queue h4 {
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+        .waiting-queue h4 i {
+            color: #4ECDC4;
+        }
+
+.queue-item {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border-left: 4px solid #4ECDC4;
+    transition: all 0.3s ease;
+}
+
+    .queue-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+
+    .queue-item.current {
+        background: #d4edda;
+        border-left-color: #28a745;
+    }
+
+    .queue-item.in-progress {
+        background: #fff3cd;
+        border-left-color: #ffc107;
+    }
+
+.queue-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.queue-number-badge {
+    background: #179C8E;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+    .queue-number-badge.current {
+        background: #28a745;
+    }
+
+    .queue-number-badge.in-progress {
+        background: #ffc107;
+        color: #333;
+    }
+
+.patient-details h5 {
+    margin: 0;
+    color: #333;
+    font-weight: 600;
+    font-size: 1.2rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.patient-details p {
+    margin: 0.5rem 0 0 0;
+    color: #718096;
+    font-size: 0.95rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.patient-details i {
+    margin-right: 0.3rem;
+    opacity: 0.7;
+}
+
+/* Auto Refresh */
+.auto-refresh {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0;
+}
+
+.auto-refresh-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: white;
+    font-weight: 500;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+}
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.3);
+    transition: .4s;
+    border-radius: 24px;
+}
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+input:checked + .slider {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+
+/* Empty State */
+.no-patients {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: #718096;
+    background: #FFFFFF;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    margin: 2rem;
+}
+
+    .no-patients i {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        color: #4ECDC4;
+    }
+
+    .no-patients h5 {
+        color: #333;
+        margin-bottom: 1rem;
+        font-weight: 600;
+        font-size: 1.3rem;
+    }
+
+    .no-patients p {
+        font-size: 1rem;
+        margin-bottom: 0;
+        opacity: 0.8;
+    }
+
+/* Action Buttons in Queue Items */
+.queue-item .btn {
+    border-radius: 8px;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+    .status-badge.waiting {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .status-badge.in-progress {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-badge.completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .queue-management {
+        padding: 1.5rem;
+    }
+    
+    .queue-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 992px) {
+    .queue-header {
+        flex-wrap: wrap;
+    }
+    
+    .queue-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .queue-management {
+        padding: 1rem;
+    }
+
+    .queue-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+        padding: 1.5rem;
+    }
+
+        .queue-header h2 {
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: 1.75rem;
+        }
+        
+        .queue-header h2 i {
+            font-size: 2rem;
+        }
+
+    .queue-controls {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+        .queue-controls .btn {
+            width: 100%;
+            justify-content: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .queue-controls .btn:last-child {
+            margin-bottom: 0;
+        }
+
+    .queue-item {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+        padding: 1.25rem;
+    }
+
+    .queue-info {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+
+    .queue-stats {
+        grid-template-columns: 1fr;
+        margin: 1rem;
+        gap: 1rem;
+    }
+
+    .current-patient,
+    .waiting-queue {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .current-patient .patient-name {
+        font-size: 2rem !important;
+    }
+    
+    .current-patient .queue-number {
+        font-size: 1.3rem !important;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-number {
+        font-size: 1.75rem;
+    }
+    
+    .content-card {
+        margin-bottom: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .queue-management {
+        padding: 0.75rem;
+    }
+    
+    .queue-header {
+        padding: 1.25rem;
+    }
+    
+    .queue-stats {
+        grid-template-columns: 1fr;
+        margin: 0.75rem;
+        gap: 0.75rem;
+    }
+
+    .queue-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .queue-header h2 i {
+        font-size: 1.75rem;
+    }
+
+    .current-patient .patient-name {
+        font-size: 1.75rem !important;
+    }
+    
+    .current-patient .queue-number {
+        font-size: 1.2rem !important;
+    }
+}
+
+/* ===== TRIAGE MODAL ENHANCED STYLES ===== */
+
+/* Modal styling - backdrop disabled to prevent blocking clicks */
+#nextPatientModal.modal.show {
+    display: block !important;
+}
+
+#nextPatientModal .modal-dialog {
+    position: relative;
+    margin: 1.75rem auto;
+    max-width: 800px;
+}
+
+/* Modal Content Improvements */
+#nextPatientModal .modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    position: relative;
+}
+
+#nextPatientModal .modal-header {
+    background: linear-gradient(135deg, #179C8E 0%, #4FC4D3 100%);
+    border-bottom: none;
+    padding: 1.5rem 2rem;
+    border-radius: 0;
+}
+
+#nextPatientModal .modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#nextPatientModal .modal-title i {
+    font-size: 1.75rem;
+    opacity: 0.95;
+}
+
+#nextPatientModal .modal-body {
+    padding: 2rem;
+    background: #fafbfc;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+/* Custom Scrollbar for Modal Body */
+#nextPatientModal .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#nextPatientModal .modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+#nextPatientModal .modal-body::-webkit-scrollbar-thumb {
+    background: #179C8E;
+    border-radius: 10px;
+}
+
+#nextPatientModal .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #3db5ad;
+}
+
+#nextPatientModal .modal-footer {
+    border-top: 1px solid #e5e7eb;
+    padding: 1.25rem 2rem;
+    background: #ffffff;
+    border-radius: 0;
+}
+
+/* Alert Styling */
+#nextPatientModal .alert {
+    border-radius: 12px;
+    border: none;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+#nextPatientModal .alert-info {
+    background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 100%);
+    color: #1e40af;
+    border-left: 4px solid #3b82f6;
+}
+
+#nextPatientModal .alert-info i {
+    font-size: 1.25rem;
+    color: #3b82f6;
+}
+
+/* Form Section Styling */
+#nextPatientModal .form-section {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+#nextPatientModal .form-section:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #4ECDC4;
+}
+
+#nextPatientModal .section-title {
+    color: #1f2937;
+    font-weight: 700;
+    font-size: 1.15rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.875rem;
+    border-bottom: 2px solid #4ECDC4;
+    position: relative;
+}
+
+#nextPatientModal .section-title::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, #4ECDC4 0%, #44A08D 100%);
+    border-radius: 2px;
+}
+
+#nextPatientModal .section-title i {
+    color: #4ECDC4;
+    font-size: 1.25rem;
+    background: linear-gradient(135deg, #e0f7f5 0%, #d1f2ef 100%);
+    padding: 0.5rem;
+    border-radius: 8px;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Form Group Styling */
+#nextPatientModal .form-group {
+    margin-bottom: 1.75rem;
+    position: relative;
+}
+
+#nextPatientModal .form-group:last-child {
+    margin-bottom: 0;
+}
+
+#nextPatientModal .form-group label {
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.95rem;
+    margin-bottom: 0.625rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#nextPatientModal .form-group label i {
+    color: #4ECDC4;
+    font-size: 1rem;
+    width: 1.25rem;
+    flex-shrink: 0;
+}
+
+#nextPatientModal .form-control {
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background: #ffffff;
+    width: 100%;
+}
+
+#nextPatientModal .form-control:focus {
+    border-color: #4ECDC4;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+    outline: none;
+    background: #ffffff;
+}
+
+#nextPatientModal .form-control:read-only {
+    background: #f9fafb;
+    cursor: not-allowed;
+    border-color: #d1d5db;
+}
+
+#nextPatientModal .form-control::placeholder {
+    color: #9ca3af;
+    opacity: 0.7;
+}
+
+#nextPatientModal .form-text {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.375rem;
+    display: block;
+    line-height: 1.4;
+}
+
+/* Row Spacing Improvements */
+#nextPatientModal .form-section .row {
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+    margin-bottom: 0;
+}
+
+#nextPatientModal .form-section .row > [class*="col-"] {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    margin-bottom: 0;
+}
+
+/* Better spacing between vital signs rows */
+#nextPatientModal .form-section .row + .row {
+    margin-top: 1rem;
+}
+
+/* Blood Pressure Inputs - Better Arrangement */
+#nextPatientModal .form-group .row {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    margin-top: 0;
+    display: flex;
+    align-items: flex-start;
+}
+
+#nextPatientModal .form-group .row .col-6 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+#nextPatientModal .form-group .row .col-6 input {
+    width: 100%;
+}
+
+#nextPatientModal .form-group .row .col-6 small {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+    display: block;
+    font-weight: 500;
+}
+
+/* Ensure input fields align at same baseline */
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group input[type="number"],
+#nextPatientModal .form-section .row [class*="col-md-6"] .form-group input[type="number"],
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group .input-group-icon-wrapper,
+#nextPatientModal .form-section .row [class*="col-md-6"] .form-group .input-group-icon-wrapper {
+    margin-top: 0;
+}
+
+/* Ensure all input boxes start at the same vertical position */
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure labels take up consistent space */
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group > label {
+    height: 2rem;
+    margin-bottom: 0.625rem;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* Ensure inputs start at same position after labels */
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group > input[type="number"],
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group > .row {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+/* Make sure BP inputs align with single inputs */
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group .row {
+    margin-top: 0;
+}
+
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group .row .col-6 input {
+    margin-top: 0;
+}
+
+/* Vital Signs Grid - Better Alignment */
+#nextPatientModal .form-section .row:first-of-type {
+    margin-bottom: 1.5rem;
+}
+
+/* Ensure consistent height for vital sign cards */
+#nextPatientModal .form-section .row [class*="col-md-4"],
+#nextPatientModal .form-section .row [class*="col-md-6"] {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+}
+
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group,
+#nextPatientModal .form-section .row [class*="col-md-6"] .form-group {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex: 1;
+    margin-bottom: 0;
+}
+
+/* Align labels consistently */
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group label,
+#nextPatientModal .form-section .row [class*="col-md-6"] .form-group label {
+    min-height: 2rem;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.625rem;
+    height: 2rem;
+}
+
+/* Ensure all input boxes align at the same top position */
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group > input[type="number"],
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group > .row {
+    margin-top: 0;
+}
+
+/* Align BP inputs with other single inputs */
+#nextPatientModal .form-section .row [class*="col-md-4"] .form-group .row {
+    margin-top: 0;
+    align-items: flex-start;
+}
+
+/* Better alignment for vital signs in grid */
+#nextPatientModal .form-section .row [class*="col-md-4"] .vital-result-modal,
+#nextPatientModal .form-section .row [class*="col-md-6"] .vital-result-modal {
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+/* Vital Signs Result Display */
+.vital-result-modal {
+    background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);
+    border: 2px solid #4ECDC4;
+    border-left: 5px solid #4ECDC4;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-top: 0.875rem;
+    animation: slideDown 0.4s ease-out;
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.15);
+    transition: all 0.3s ease;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.vital-result-modal:hover {
+    box-shadow: 0 6px 16px rgba(78, 205, 196, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Ensure vital results don't break layout */
+#nextPatientModal .form-group .vital-result-modal {
+    margin-top: 0.875rem;
+    flex-shrink: 0;
+}
+
+.vital-result-modal-hidden {
+    display: none;
+}
+
+.vital-result-value-modal {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+}
+
+.vital-result-category-modal {
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.vital-result-category-modal:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.vital-result-category-modal.normal {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+}
+
+.vital-result-category-modal.warning {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: white;
+}
+
+.vital-result-category-modal.abnormal {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: white;
+}
+
+.vital-result-category-modal.critical {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: white;
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+/* BMI Result Modal Styles */
+.bmi-result-modal {
+    background: linear-gradient(135deg, #f0fdfa 0%, #e0f2fe 100%);
+    border: 2px solid #4ECDC4;
+    border-left: 5px solid #4ECDC4;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1.25rem;
+    animation: slideDown 0.4s ease-out;
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.15);
+}
+
+.bmi-result-value-modal {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.5px;
+}
+
+.bmi-result-category-modal {
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.bmi-result-category-modal:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.bmi-result-category-modal.underweight {
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+    color: white;
+}
+
+.bmi-result-category-modal.normal {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+}
+
+.bmi-result-category-modal.overweight {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: white;
+}
+
+.bmi-result-category-modal.obese {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: white;
+}
+
+.bmi-result-modal-hidden {
+    display: none;
+}
+
+/* Queue Form Section - BMI Calculator */
+.queue-form-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 2px solid #e5e7eb;
+    background: #f9fafb;
+    margin-left: -1.75rem;
+    margin-right: -1.75rem;
+    margin-bottom: -1.75rem;
+    padding-left: 1.75rem;
+    padding-right: 1.75rem;
+    padding-bottom: 1.75rem;
+    border-radius: 0 0 12px 12px;
+}
+
+
+/* Allergies Field - Better Spacing */
+#nextPatientModal .form-section > .form-group:last-of-type {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* Input Group with Icons - Height and Weight */
+.input-group-icon-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 0;
+}
+
+.input-group-icon-wrapper .input-icon {
+    color: #4ECDC4;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.input-group-icon-wrapper .form-control-icon {
+    flex: 1;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.input-group-icon-wrapper .form-control-icon:focus {
+    border-color: #4ECDC4;
+    box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.1);
+    outline: none;
+}
+
+.input-group-icon-wrapper:focus-within .input-icon {
+    color: #179C8E;
+    transform: scale(1.15);
+}
+
+.input-group-icon-wrapper:hover .input-icon {
+    color: #179C8E;
+}
+
+/* Ensure consistent input height across all fields */
+#nextPatientModal .form-control {
+    min-height: 2.75rem;
+    box-sizing: border-box;
+}
+
+/* Button Styling in Modal */
+#nextPatientModal .btn {
+    border-radius: 10px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#nextPatientModal .btn-primary {
+    background: linear-gradient(135deg, #179C8E 0%, #4FC4D3 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(78, 205, 196, 0.3);
+}
+
+#nextPatientModal .btn-primary:hover {
+    background: linear-gradient(135deg, #3db5ad 0%, #3a8f7d 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(78, 205, 196, 0.4);
+}
+
+#nextPatientModal .btn-secondary {
+    background: #6b7280;
+    color: white;
+    box-shadow: 0 4px 12px rgba(107, 114, 128, 0.2);
+}
+
+#nextPatientModal .btn-secondary:hover {
+    background: #4b5563;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(107, 114, 128, 0.3);
+}
+
+#nextPatientModal .btn-sm {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+}
+
+.queue-btn-mb {
+    margin-bottom: 1rem;
+}
+
+/* Textarea Styling */
+#nextPatientModal textarea.form-control {
+    resize: vertical;
+    min-height: 100px;
+    line-height: 1.6;
+}
+
+/* Animations */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.85;
+        transform: scale(1.02);
+    }
+}
+
+/* Responsive Design for Modal */
+@media (max-width: 992px) {
+    /* Better spacing for medium screens */
+    #nextPatientModal .form-section .row [class*="col-md-4"] {
+        margin-bottom: 1.5rem;
+    }
+    
+    #nextPatientModal .form-section .row [class*="col-md-4"]:last-child {
+        margin-bottom: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    #nextPatientModal .modal-body {
+        padding: 1.5rem;
+    }
+
+    #nextPatientModal .form-section {
+        padding: 1.25rem;
+    }
+    
+    .queue-form-section {
+        margin-left: -1.25rem;
+        margin-right: -1.25rem;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+
+    #nextPatientModal .section-title {
+        font-size: 1rem;
+    }
+    
+    #nextPatientModal .form-section .row {
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+    }
+    
+    #nextPatientModal .form-section .row > [class*="col-"] {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .vital-result-value-modal {
+        font-size: 1.75rem;
+    }
+
+    .bmi-result-value-modal {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 576px) {
+    #nextPatientModal .modal-body {
+        padding: 1rem;
+    }
+
+    #nextPatientModal .form-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .queue-form-section {
+        margin-left: -1rem;
+        margin-right: -1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+    }
+
+    #nextPatientModal .modal-header {
+        padding: 1rem 1.25rem;
+    }
+
+    #nextPatientModal .modal-title {
+        font-size: 1.25rem;
+    }
+    
+    #nextPatientModal .form-section .row > [class*="col-"] {
+        margin-bottom: 1.5rem;
+    }
+    
+    #nextPatientModal .form-section .row > [class*="col-"]:last-child {
+        margin-bottom: 0;
+    }
+
+    #nextPatientModal .modal-footer {
+        padding: 1rem;
+        flex-direction: column-reverse;
+        gap: 0.5rem;
+    }
+
+    #nextPatientModal .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .vital-result-modal {
+        min-height: 90px;
+        padding: 1rem;
+    }
+    
+    .vital-result-value-modal {
+        font-size: 1.5rem;
+    }
+}
