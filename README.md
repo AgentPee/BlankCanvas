@@ -1,4 +1,6 @@
-﻿# QuickClinique - University Clinic Management System
+# Turn this into a Blank canvas to be ready for Commercial Use
+ 
+ # QuickClinique - University Clinic Management System
 
 A comprehensive web-based clinic management system designed for university medical-dental clinics. Built with ASP.NET Core MVC, Entity Framework Core, and MySQL.
 
